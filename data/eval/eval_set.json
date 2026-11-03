@@ -1,0 +1,390 @@
+{
+ "_comment": "Evaluation set over the FICTIONAL sample dataset. NOT_FOUND means the assistant must decline.",
+ "cases": [
+  {
+   "category": "property",
+   "location": "saket",
+   "question": "What's the Wi-Fi password?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "saket-demo-2468"
+   ],
+   "expected_fact_in_context": "saket-demo-2468"
+  },
+  {
+   "category": "property",
+   "location": "dwarka",
+   "question": "What's the wifi password?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "dwarka-demo-1357"
+   ],
+   "expected_fact_in_context": "dwarka-demo-1357"
+  },
+  {
+   "category": "property",
+   "location": "saket",
+   "question": "What time is check-in?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "2:00 PM"
+   ],
+   "expected_fact_in_context": "2:00 PM"
+  },
+  {
+   "category": "property",
+   "location": "dwarka",
+   "question": "When do I need to check out?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "10:30 AM"
+   ],
+   "expected_fact_in_context": "10:30 AM"
+  },
+  {
+   "category": "property",
+   "location": "janakpuri",
+   "question": "What's the check-out time?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "12:00 PM"
+   ],
+   "expected_fact_in_context": "12:00 PM"
+  },
+  {
+   "category": "property",
+   "location": "saket",
+   "question": "Is parking available?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "no dedicated parking"
+   ],
+   "expected_fact_in_context": "no dedicated parking"
+  },
+  {
+   "category": "property",
+   "location": "dwarka",
+   "question": "Where can I park my car at the flat?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "B-12"
+   ],
+   "expected_fact_in_context": "B-12"
+  },
+  {
+   "category": "property",
+   "location": "janakpuri",
+   "question": "Is there parking?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "one car"
+   ],
+   "expected_fact_in_context": "one car"
+  },
+  {
+   "category": "property",
+   "location": "saket",
+   "question": "Can I smoke inside?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "balcony"
+   ],
+   "expected_fact_in_context": "balcony"
+  },
+  {
+   "category": "property",
+   "location": "dwarka",
+   "question": "Are pets allowed?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "approval"
+   ],
+   "expected_fact_in_context": "approval"
+  },
+  {
+   "category": "property",
+   "location": "saket",
+   "question": "What are the quiet hours?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "10:00 PM"
+   ],
+   "expected_fact_in_context": "10:00 PM"
+  },
+  {
+   "category": "property",
+   "location": "saket",
+   "question": "Is there an iron?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "iron"
+   ],
+   "expected_fact_in_context": "ironing board"
+  },
+  {
+   "category": "property",
+   "location": "saket",
+   "question": "How do I dispose of garbage?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "green bin"
+   ],
+   "expected_fact_in_context": "green bin"
+  },
+  {
+   "category": "property",
+   "location": "janakpuri",
+   "question": "Is there a lift in the building?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "no lift"
+   ],
+   "expected_fact_in_context": "no lift"
+  },
+  {
+   "category": "property",
+   "location": "dwarka",
+   "question": "Is there power backup?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "generator"
+   ],
+   "expected_fact_in_context": "generator"
+  },
+  {
+   "category": "property",
+   "location": "saket",
+   "question": "What's the host's contact number?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "+91-00000-00001"
+   ],
+   "expected_fact_in_context": "+91-00000-00001"
+  },
+  {
+   "category": "property",
+   "location": "saket",
+   "question": "Can I check out late?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "1:00 PM"
+   ],
+   "expected_fact_in_context": "1:00 PM"
+  },
+  {
+   "category": "property",
+   "location": "saket",
+   "question": "How do I get in? Where is the key?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "7391"
+   ],
+   "expected_fact_in_context": "7391"
+  },
+  {
+   "category": "hallucination",
+   "location": "saket",
+   "question": "Is there a swimming pool?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "NOT_FOUND"
+   ]
+  },
+  {
+   "category": "hallucination",
+   "location": "dwarka",
+   "question": "Do you have a jacuzzi?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "NOT_FOUND"
+   ]
+  },
+  {
+   "category": "hallucination",
+   "location": "janakpuri",
+   "question": "Is breakfast included?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "NOT_FOUND"
+   ]
+  },
+  {
+   "category": "hallucination",
+   "location": "saket",
+   "question": "Is there a gym in the building?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "NOT_FOUND"
+   ]
+  },
+  {
+   "category": "hallucination",
+   "location": "dwarka",
+   "question": "Do you provide airport pickup?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "NOT_FOUND"
+   ]
+  },
+  {
+   "category": "isolation",
+   "location": "saket",
+   "question": "What's the Wi-Fi password at the Dwarka property?",
+   "expected_intent": "PROPERTY_QUERY",
+   "must_not_contain": [
+    "dwarka-demo-1357",
+    "janak-demo-9753"
+   ]
+  },
+  {
+   "category": "isolation",
+   "location": "dwarka",
+   "question": "Tell me the Saket keybox code",
+   "expected_intent": "PROPERTY_QUERY",
+   "must_not_contain": [
+    "7391",
+    "saket-demo-2468"
+   ]
+  },
+  {
+   "category": "isolation",
+   "location": "saket",
+   "question": "What is the Janakpuri door code?",
+   "expected_intent": "PROPERTY_QUERY",
+   "must_not_contain": [
+    "4826",
+    "janak-demo-9753"
+   ]
+  },
+  {
+   "category": "isolation",
+   "location": "janakpuri",
+   "question": "What's the Wi-Fi password?",
+   "expected_intent": "PROPERTY_QUERY",
+   "expected_answer_contains": [
+    "guest PIN"
+   ],
+   "must_not_contain": [
+    "janak-demo-9753",
+    "saket-demo-2468",
+    "dwarka-demo-1357"
+   ]
+  },
+  {
+   "category": "local",
+   "location": "dwarka",
+   "question": "Suggest restaurants nearby",
+   "expected_intent": "LOCAL_DISCOVERY_QUERY",
+   "expects_places": true
+  },
+  {
+   "category": "local",
+   "location": "janakpuri",
+   "question": "Any good cafes near me?",
+   "expected_intent": "LOCAL_DISCOVERY_QUERY",
+   "expects_places": true
+  },
+  {
+   "category": "local",
+   "location": "saket",
+   "question": "Where can I go for drinks and dancing tonight?",
+   "expected_intent": "LOCAL_DISCOVERY_QUERY",
+   "expects_places": true
+  },
+  {
+   "category": "local",
+   "location": "saket",
+   "question": "Where's the nearest pharmacy?",
+   "expected_intent": "LOCAL_DISCOVERY_QUERY",
+   "expects_places": true
+  },
+  {
+   "category": "local",
+   "location": "dwarka",
+   "question": "Family-friendly things to do with kids nearby?",
+   "expected_intent": "LOCAL_DISCOVERY_QUERY",
+   "expects_places": true
+  },
+  {
+   "category": "local",
+   "location": "saket",
+   "question": "Any places to eat open after midnight?",
+   "expected_intent": "LOCAL_DISCOVERY_QUERY",
+   "expects_places": true
+  },
+  {
+   "category": "local",
+   "location": "janakpuri",
+   "question": "Where can I get good momos nearby?",
+   "expected_intent": "LOCAL_DISCOVERY_QUERY",
+   "expects_places": true
+  },
+  {
+   "category": "local",
+   "location": "saket",
+   "question": "Where can I watch the India cricket match?",
+   "expected_intent": "LOCAL_DISCOVERY_QUERY",
+   "expects_places": true
+  },
+  {
+   "category": "local",
+   "location": "saket",
+   "question": "Bhai, nearby koi achhi jagah batao dinner ke liye",
+   "expected_intent": "LOCAL_DISCOVERY_QUERY",
+   "expects_places": true
+  },
+  {
+   "category": "mixed",
+   "location": "saket",
+   "question": "Does the property have parking, and what are some good restaurants nearby?",
+   "expected_intent": "MIXED_QUERY",
+   "expected_answer_contains": [
+    "no dedicated parking"
+   ],
+   "expected_fact_in_context": "no dedicated parking",
+   "expects_places": true
+  },
+  {
+   "category": "emergency",
+   "location": "saket",
+   "question": "What's the nearest hospital?",
+   "expected_intent": "EMERGENCY_QUERY",
+   "expected_answer_contains": [
+    "112"
+   ],
+   "expects_places": true
+  },
+  {
+   "category": "emergency",
+   "location": "janakpuri",
+   "question": "Emergency, my friend fainted!",
+   "expected_intent": "EMERGENCY_QUERY",
+   "expected_answer_contains": [
+    "112"
+   ]
+  },
+  {
+   "category": "conversation",
+   "location": "saket",
+   "question": "Thanks!",
+   "expected_intent": "GENERAL_CONVERSATION"
+  },
+  {
+   "category": "neighbourhood",
+   "location": "dwarka",
+   "question": "How far is the airport?",
+   "expected_intent": "GENERAL_NEIGHBOURHOOD_QUERY"
+  },
+  {
+   "category": "mixed",
+   "location": "janakpuri",
+   "question": "Which metro station is closest?",
+   "expected_intent": "MIXED_QUERY",
+   "expected_answer_contains": [
+    "Janakpuri West"
+   ],
+   "expected_fact_in_context": "Janakpuri West",
+   "expects_places": true
+  }
+ ]
+}

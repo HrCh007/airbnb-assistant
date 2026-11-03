@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/* Warm hospitality palette: cream paper, terracotta accent, deep ink. */
+@theme {
+  --color-paper: #fbf7f1;
+  --color-sand-50: #f7f0e6;
+  --color-sand-100: #efe4d4;
+  --color-sand-200: #e2d3bd;
+  --color-sand-300: #cdb89a;
+  --color-ink: #2a211b;
+  --color-ink-soft: #5c4f45;
+  --color-ink-muted: #8a7b6e;
+  --color-terracotta-50: #fbefe8;
+  --color-terracotta-100: #f6dccd;
+  --color-terracotta-500: #c8643b;
+  --color-terracotta-600: #b2532d;
+  --color-terracotta-700: #8f4024;
+  --color-saffron-400: #e9a23b;
+  --color-leaf-600: #4f7a52;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-face), ui-serif, Georgia, serif;
+
+  --animate-rise: rise 0.35s ease-out both;
+  --animate-fade: fade 0.4s ease-out both;
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+html, body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Thin scrollbars for horizontal card rails. */
+.rail { scrollbar-width: thin; scroll-snap-type: x mandatory; }
+.rail > * { scroll-snap-align: start; }
+
+.prose-chat p { margin: 0.35rem 0; }
+.prose-chat p:first-child { margin-top: 0; }
+.prose-chat p:last-child { margin-bottom: 0; }
+.prose-chat ul, .prose-chat ol { margin: 0.4rem 0; padding-left: 1.2rem; }
+.prose-chat ul { list-style: disc; }
+.prose-chat ol { list-style: decimal; }
+.prose-chat li { margin: 0.2rem 0; }
+.prose-chat strong { font-weight: 600; color: var(--color-ink); }
+.prose-chat a { color: var(--color-terracotta-600); text-decoration: underline; text-underline-offset: 2px; }
+.prose-chat em { color: var(--color-ink-soft); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

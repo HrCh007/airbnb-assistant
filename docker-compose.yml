@@ -1,0 +1,53 @@
+# Local development stack: PostgreSQL + pgvector, FastAPI backend, Next.js frontend.
+#   cp .env.example .env    # add API keys if you have them
+#   docker compose up --build
+#   docker compose exec backend python -m scripts.seed
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: airbnb
+      POSTGRES_PASSWORD: airbnb
+      POSTGRES_DB: airbnb_assistant
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airbnb -d airbnb_assistant"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+    volumes:
+      # Fictional sample documents used by `python -m scripts.seed` (dev only).
+      - ./data/sample_documents:/data/sample_documents:ro
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://airbnb:airbnb@db:5432/airbnb_assistant
+      FRONTEND_URL: http://localhost:3000
+      # Without a Google key, show clearly-labelled mock places in local dev.
+      PLACES_PROVIDER: ${PLACES_PROVIDER:-auto}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

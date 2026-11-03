@@ -1,0 +1,3848 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Delhi Stays Guest Assistant API",
+  "description": "Location-aware, multi-property RAG assistant for Airbnb guests in Delhi. Guest endpoints under /api, admin endpoints under /api/admin (Bearer JWT).",
+  "version": "1.0.0"
+ },
+ "paths": {
+  "/api/status": {
+   "get": {
+    "tags": [
+     "meta"
+    ],
+    "summary": "Feature availability for the frontend",
+    "operationId": "status_api_status_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "type": "object",
+         "title": "Response Status Api Status Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/locations": {
+   "get": {
+    "tags": [
+     "properties"
+    ],
+    "summary": "Get Locations",
+    "operationId": "get_locations_api_locations_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/LocationOut"
+         },
+         "type": "array",
+         "title": "Response Get Locations Api Locations Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/properties": {
+   "get": {
+    "tags": [
+     "properties"
+    ],
+    "summary": "Get Properties",
+    "operationId": "get_properties_api_properties_get",
+    "parameters": [
+     {
+      "name": "location",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Location"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/PropertySummary"
+         },
+         "title": "Response Get Properties Api Properties Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/properties/{property_id}": {
+   "get": {
+    "tags": [
+     "properties"
+    ],
+    "summary": "Get Property Public",
+    "operationId": "get_property_public_api_properties__property_id__get",
+    "parameters": [
+     {
+      "name": "property_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Property Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PropertySummary"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/chat/sessions": {
+   "post": {
+    "tags": [
+     "chat"
+    ],
+    "summary": "Create Session",
+    "operationId": "create_session_api_chat_sessions_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/SessionCreate"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SessionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/chat/sessions/{session_id}": {
+   "get": {
+    "tags": [
+     "chat"
+    ],
+    "summary": "Get Session",
+    "operationId": "get_session_api_chat_sessions__session_id__get",
+    "parameters": [
+     {
+      "name": "session_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Session Id"
+      }
+     },
+     {
+      "name": "x-session-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Session-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SessionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/chat/sessions/{session_id}/selection": {
+   "put": {
+    "tags": [
+     "chat"
+    ],
+    "summary": "Select or change location / property",
+    "operationId": "update_selection_api_chat_sessions__session_id__selection_put",
+    "parameters": [
+     {
+      "name": "session_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Session Id"
+      }
+     },
+     {
+      "name": "x-session-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Session-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SessionSelect"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SessionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/chat/sessions/{session_id}/verify-pin": {
+   "post": {
+    "tags": [
+     "chat"
+    ],
+    "summary": "Verify Pin",
+    "operationId": "verify_pin_api_chat_sessions__session_id__verify_pin_post",
+    "parameters": [
+     {
+      "name": "session_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Session Id"
+      }
+     },
+     {
+      "name": "x-session-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Session-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PinVerifyIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/chat/sessions/{session_id}/messages": {
+   "get": {
+    "tags": [
+     "chat"
+    ],
+    "summary": "Get Messages",
+    "operationId": "get_messages_api_chat_sessions__session_id__messages_get",
+    "parameters": [
+     {
+      "name": "session_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Session Id"
+      }
+     },
+     {
+      "name": "x-session-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Session-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/MessageOut"
+         },
+         "title": "Response Get Messages Api Chat Sessions  Session Id  Messages Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "chat"
+    ],
+    "summary": "Clear conversation history (keeps the selected property)",
+    "operationId": "clear_messages_api_chat_sessions__session_id__messages_delete",
+    "parameters": [
+     {
+      "name": "session_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Session Id"
+      }
+     },
+     {
+      "name": "x-session-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Session-Token"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/chat/message": {
+   "post": {
+    "tags": [
+     "chat"
+    ],
+    "summary": "Send a guest message; response is a Server-Sent Events stream",
+    "operationId": "chat_message_api_chat_message_post",
+    "parameters": [
+     {
+      "name": "x-session-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Session-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ChatMessageIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       },
+       "text/event-stream": {}
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/places/search": {
+   "post": {
+    "tags": [
+     "places"
+    ],
+    "summary": "Places Search",
+    "operationId": "places_search_api_places_search_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PlacesSearchRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PlacesSearchResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/places/details/{place_id}": {
+   "get": {
+    "tags": [
+     "places"
+    ],
+    "summary": "Places Details",
+    "operationId": "places_details_api_places_details__place_id__get",
+    "parameters": [
+     {
+      "name": "place_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Place Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PlaceResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/admin/login": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Login",
+    "operationId": "login_api_admin_login_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LoginIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TokenOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/admin/me": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Me",
+    "operationId": "me_api_admin_me_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/admin/dashboard": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Dashboard",
+    "operationId": "dashboard_api_admin_dashboard_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/admin/locations": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Admin Locations",
+    "operationId": "admin_locations_api_admin_locations_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/LocationOut"
+         },
+         "type": "array",
+         "title": "Response Admin Locations Api Admin Locations Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Create Location",
+    "operationId": "create_location_api_admin_locations_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LocationCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LocationOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/admin/properties": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Admin List Properties",
+    "operationId": "admin_list_properties_api_admin_properties_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/PropertyAdminOut"
+         },
+         "type": "array",
+         "title": "Response Admin List Properties Api Admin Properties Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Admin Create Property",
+    "operationId": "admin_create_property_api_admin_properties_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PropertyCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PropertyAdminOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/admin/properties/{property_id}": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Admin Get Property",
+    "operationId": "admin_get_property_api_admin_properties__property_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "property_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Property Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PropertyAdminOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Admin Update Property",
+    "operationId": "admin_update_property_api_admin_properties__property_id__put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "property_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Property Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PropertyUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PropertyAdminOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Deactivate a property (or permanently delete with ?hard=true)",
+    "operationId": "admin_delete_property_api_admin_properties__property_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "property_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Property Id"
+      }
+     },
+     {
+      "name": "hard",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Hard"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/admin/documents/upload": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Upload Document",
+    "operationId": "upload_document_api_admin_documents_upload_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_upload_document_api_admin_documents_upload_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DocumentOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/admin/documents": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "List Documents",
+    "operationId": "list_documents_api_admin_documents_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "property_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "uuid"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Property Id"
+      }
+     },
+     {
+      "name": "include_system",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Include System"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/DocumentOut"
+         },
+         "title": "Response List Documents Api Admin Documents Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/admin/documents/{document_id}/chunks": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Document Chunks",
+    "operationId": "document_chunks_api_admin_documents__document_id__chunks_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "document_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Document Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/admin/documents/{document_id}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Delete Document",
+    "operationId": "delete_document_api_admin_documents__document_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "document_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Document Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/admin/documents/{document_id}/reindex": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Reindex Document",
+    "operationId": "reindex_document_api_admin_documents__document_id__reindex_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "document_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Document Id"
+      }
+     }
+    ],
+    "responses": {
+     "202": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DocumentOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/admin/documents/reindex-all": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Re-index every document (e.g. after changing embedding provider)",
+    "operationId": "reindex_all_api_admin_documents_reindex_all_post",
+    "responses": {
+     "202": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/admin/curated": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "List Curated",
+    "operationId": "list_curated_api_admin_curated_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "property_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "uuid"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Property Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CuratedOut"
+         },
+         "title": "Response List Curated Api Admin Curated Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Create Curated",
+    "operationId": "create_curated_api_admin_curated_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CuratedIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CuratedOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/admin/curated/{rec_id}": {
+   "put": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Update Curated",
+    "operationId": "update_curated_api_admin_curated__rec_id__put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "rec_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Rec Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CuratedIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CuratedOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Delete Curated",
+    "operationId": "delete_curated_api_admin_curated__rec_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "rec_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Rec Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/health": {
+   "get": {
+    "tags": [
+     "meta"
+    ],
+    "summary": "Health",
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "type": "object",
+         "title": "Response Health Health Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "Body_upload_document_api_admin_documents_upload_post": {
+    "properties": {
+     "property_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Property Id"
+     },
+     "file": {
+      "type": "string",
+      "contentMediaType": "application/octet-stream",
+      "title": "File"
+     }
+    },
+    "type": "object",
+    "required": [
+     "property_id",
+     "file"
+    ],
+    "title": "Body_upload_document_api_admin_documents_upload_post"
+   },
+   "ChatMessageIn": {
+    "properties": {
+     "session_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Session Id"
+     },
+     "message": {
+      "type": "string",
+      "maxLength": 1500,
+      "minLength": 1,
+      "title": "Message"
+     }
+    },
+    "type": "object",
+    "required": [
+     "session_id",
+     "message"
+    ],
+    "title": "ChatMessageIn"
+   },
+   "CheckInOut": {
+    "properties": {
+     "check_in_time": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Check In Time"
+     },
+     "check_out_time": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Check Out Time"
+     },
+     "early_check_in_policy": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Early Check In Policy"
+     },
+     "late_check_out_policy": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Late Check Out Policy"
+     },
+     "self_check_in_instructions": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Self Check In Instructions"
+     },
+     "key_collection_instructions": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Key Collection Instructions"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "CheckInOut"
+   },
+   "CuratedIn": {
+    "properties": {
+     "property_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Property Id"
+     },
+     "name": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 2,
+      "title": "Name"
+     },
+     "category": {
+      "type": "string",
+      "maxLength": 60,
+      "minLength": 2,
+      "title": "Category"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 1000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "address": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Address"
+     },
+     "latitude": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 90.0,
+        "minimum": -90.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latitude"
+     },
+     "longitude": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 180.0,
+        "minimum": -180.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Longitude"
+     },
+     "google_place_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 255
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Google Place Id"
+     },
+     "tags": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 20,
+      "title": "Tags"
+     },
+     "is_active": {
+      "type": "boolean",
+      "title": "Is Active",
+      "default": true
+     }
+    },
+    "type": "object",
+    "required": [
+     "property_id",
+     "name",
+     "category"
+    ],
+    "title": "CuratedIn"
+   },
+   "CuratedOut": {
+    "properties": {
+     "property_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Property Id"
+     },
+     "name": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 2,
+      "title": "Name"
+     },
+     "category": {
+      "type": "string",
+      "maxLength": 60,
+      "minLength": 2,
+      "title": "Category"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 1000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "address": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Address"
+     },
+     "latitude": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 90.0,
+        "minimum": -90.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latitude"
+     },
+     "longitude": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 180.0,
+        "minimum": -180.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Longitude"
+     },
+     "google_place_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 255
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Google Place Id"
+     },
+     "tags": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 20,
+      "title": "Tags"
+     },
+     "is_active": {
+      "type": "boolean",
+      "title": "Is Active",
+      "default": true
+     },
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "property_id",
+     "name",
+     "category",
+     "id",
+     "created_at"
+    ],
+    "title": "CuratedOut"
+   },
+   "DocumentOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "property_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Property Id"
+     },
+     "property_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Property Name"
+     },
+     "filename": {
+      "type": "string",
+      "title": "Filename"
+     },
+     "document_type": {
+      "type": "string",
+      "title": "Document Type"
+     },
+     "size_bytes": {
+      "type": "integer",
+      "title": "Size Bytes"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "error_message": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error Message"
+     },
+     "chunk_count": {
+      "type": "integer",
+      "title": "Chunk Count"
+     },
+     "is_system": {
+      "type": "boolean",
+      "title": "Is System"
+     },
+     "uploaded_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Uploaded At"
+     },
+     "last_indexed_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Indexed At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "property_id",
+     "filename",
+     "document_type",
+     "size_bytes",
+     "status",
+     "chunk_count",
+     "is_system",
+     "uploaded_at"
+    ],
+    "title": "DocumentOut"
+   },
+   "Emergency": {
+    "properties": {
+     "host_contact": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Host Contact"
+     },
+     "property_manager_contact": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Property Manager Contact"
+     },
+     "emergency_exit_instructions": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Emergency Exit Instructions"
+     },
+     "nearby_hospital": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nearby Hospital"
+     },
+     "emergency_numbers": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Emergency Numbers"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "Emergency"
+   },
+   "Facilities": {
+    "properties": {
+     "wifi_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wifi Name"
+     },
+     "wifi_password": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wifi Password"
+     },
+     "air_conditioning": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Air Conditioning"
+     },
+     "heating": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Heating"
+     },
+     "kitchen": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kitchen"
+     },
+     "refrigerator": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Refrigerator"
+     },
+     "washing_machine": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Washing Machine"
+     },
+     "television": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Television"
+     },
+     "parking": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Parking"
+     },
+     "lift": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lift"
+     },
+     "power_backup": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Power Backup"
+     },
+     "drinking_water": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Drinking Water"
+     },
+     "housekeeping": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Housekeeping"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "Facilities"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "HouseRules": {
+    "properties": {
+     "smoking_policy": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Smoking Policy"
+     },
+     "pet_policy": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pet Policy"
+     },
+     "visitors_policy": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Visitors Policy"
+     },
+     "noise_restrictions": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Noise Restrictions"
+     },
+     "parties_events_policy": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Parties Events Policy"
+     },
+     "security_instructions": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Security Instructions"
+     },
+     "garbage_disposal": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Garbage Disposal"
+     },
+     "other_restrictions": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Other Restrictions"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "HouseRules"
+   },
+   "LocationCreate": {
+    "properties": {
+     "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9\\-]{1,62}$",
+      "title": "Slug"
+     },
+     "name": {
+      "type": "string",
+      "maxLength": 120,
+      "minLength": 2,
+      "title": "Name"
+     },
+     "city": {
+      "type": "string",
+      "title": "City",
+      "default": "Delhi"
+     },
+     "tagline": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tagline"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 2000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     }
+    },
+    "type": "object",
+    "required": [
+     "slug",
+     "name"
+    ],
+    "title": "LocationCreate"
+   },
+   "LocationOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "slug": {
+      "type": "string",
+      "title": "Slug"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "city": {
+      "type": "string",
+      "title": "City"
+     },
+     "tagline": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tagline"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "property_count": {
+      "type": "integer",
+      "title": "Property Count",
+      "default": 0
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "slug",
+     "name",
+     "city"
+    ],
+    "title": "LocationOut"
+   },
+   "LoginIn": {
+    "properties": {
+     "email": {
+      "type": "string",
+      "maxLength": 255,
+      "minLength": 3,
+      "title": "Email"
+     },
+     "password": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Password"
+     }
+    },
+    "type": "object",
+    "required": [
+     "email",
+     "password"
+    ],
+    "title": "LoginIn"
+   },
+   "MessageOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "role": {
+      "type": "string",
+      "title": "Role"
+     },
+     "content": {
+      "type": "string",
+      "title": "Content"
+     },
+     "intent": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Intent"
+     },
+     "places": {
+      "items": {
+       "$ref": "#/components/schemas/PlaceResult"
+      },
+      "type": "array",
+      "title": "Places",
+      "default": []
+     },
+     "suggestions": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Suggestions",
+      "default": []
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "role",
+     "content",
+     "created_at"
+    ],
+    "title": "MessageOut"
+   },
+   "Neighbourhood": {
+    "properties": {
+     "nearest_metro_station": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nearest Metro Station"
+     },
+     "nearest_bus_stop": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nearest Bus Stop"
+     },
+     "airport_connectivity": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Airport Connectivity"
+     },
+     "nearby_shopping": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nearby Shopping"
+     },
+     "nearby_restaurants": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nearby Restaurants"
+     },
+     "nearby_medical": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nearby Medical"
+     },
+     "nearby_attractions": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nearby Attractions"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "Neighbourhood"
+   },
+   "PinVerifyIn": {
+    "properties": {
+     "pin": {
+      "type": "string",
+      "maxLength": 12,
+      "minLength": 4,
+      "title": "Pin"
+     }
+    },
+    "type": "object",
+    "required": [
+     "pin"
+    ],
+    "title": "PinVerifyIn"
+   },
+   "PlaceResult": {
+    "properties": {
+     "place_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Place Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "category": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Category"
+     },
+     "types": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Types",
+      "default": []
+     },
+     "address": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Address"
+     },
+     "latitude": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latitude"
+     },
+     "longitude": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Longitude"
+     },
+     "distance_km": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Distance Km"
+     },
+     "rating": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rating"
+     },
+     "user_rating_count": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "User Rating Count"
+     },
+     "price_level": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price Level"
+     },
+     "open_now": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Open Now"
+     },
+     "opening_hours": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Opening Hours",
+      "default": []
+     },
+     "phone": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Phone"
+     },
+     "website": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Website"
+     },
+     "summary": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Summary"
+     },
+     "maps_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Maps Url"
+     },
+     "directions_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Directions Url"
+     },
+     "source": {
+      "type": "string",
+      "enum": [
+       "google_places",
+       "host_curated",
+       "mock"
+      ],
+      "title": "Source",
+      "default": "google_places"
+     },
+     "host_note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Host Note"
+     },
+     "score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Score"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "title": "PlaceResult",
+    "description": "A local recommendation. Every field comes from Google Places or the host's\ncurated list - never generated by the LLM."
+   },
+   "PlacesSearchRequest": {
+    "properties": {
+     "property_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Property Id"
+     },
+     "query": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 2,
+      "title": "Query"
+     },
+     "included_type": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 60
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Included Type"
+     },
+     "radius_m": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 50000.0,
+        "minimum": 100.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Radius M"
+     },
+     "open_now": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Open Now"
+     },
+     "max_price_level": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 4.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Price Level"
+     },
+     "min_rating": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 5.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Min Rating"
+     },
+     "limit": {
+      "type": "integer",
+      "maximum": 10.0,
+      "minimum": 1.0,
+      "title": "Limit",
+      "default": 5
+     }
+    },
+    "type": "object",
+    "required": [
+     "property_id",
+     "query"
+    ],
+    "title": "PlacesSearchRequest"
+   },
+   "PlacesSearchResponse": {
+    "properties": {
+     "provider": {
+      "type": "string",
+      "title": "Provider"
+     },
+     "origin": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Origin"
+     },
+     "radius_m": {
+      "type": "integer",
+      "title": "Radius M"
+     },
+     "results": {
+      "items": {
+       "$ref": "#/components/schemas/PlaceResult"
+      },
+      "type": "array",
+      "title": "Results"
+     },
+     "notice": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Notice"
+     }
+    },
+    "type": "object",
+    "required": [
+     "provider",
+     "origin",
+     "radius_m",
+     "results"
+    ],
+    "title": "PlacesSearchResponse"
+   },
+   "PropertyAdminOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "slug": {
+      "type": "string",
+      "title": "Slug"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "location_slug": {
+      "type": "string",
+      "title": "Location Slug"
+     },
+     "location_name": {
+      "type": "string",
+      "title": "Location Name"
+     },
+     "neighbourhood": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Neighbourhood"
+     },
+     "address": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Address"
+     },
+     "bedrooms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bedrooms"
+     },
+     "bathrooms": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bathrooms"
+     },
+     "max_guests": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Guests"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "amenities": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Amenities",
+      "default": []
+     },
+     "has_coordinates": {
+      "type": "boolean",
+      "title": "Has Coordinates",
+      "default": false
+     },
+     "requires_pin": {
+      "type": "boolean",
+      "title": "Requires Pin",
+      "default": false
+     },
+     "is_placeholder": {
+      "type": "boolean",
+      "title": "Is Placeholder",
+      "default": false
+     },
+     "latitude": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latitude"
+     },
+     "longitude": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Longitude"
+     },
+     "discovery_radius_m": {
+      "type": "integer",
+      "title": "Discovery Radius M"
+     },
+     "details": {
+      "$ref": "#/components/schemas/PropertyDetails"
+     },
+     "is_active": {
+      "type": "boolean",
+      "title": "Is Active"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At"
+     },
+     "document_count": {
+      "type": "integer",
+      "title": "Document Count",
+      "default": 0
+     },
+     "chunk_count": {
+      "type": "integer",
+      "title": "Chunk Count",
+      "default": 0
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "slug",
+     "name",
+     "location_slug",
+     "location_name",
+     "discovery_radius_m",
+     "details",
+     "is_active",
+     "created_at",
+     "updated_at"
+    ],
+    "title": "PropertyAdminOut"
+   },
+   "PropertyCreate": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "maxLength": 160,
+      "minLength": 2,
+      "title": "Name"
+     },
+     "slug": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9\\-]{1,78}$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Slug"
+     },
+     "location_slug": {
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 2,
+      "title": "Location Slug"
+     },
+     "address": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 1000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Address"
+     },
+     "neighbourhood": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 160
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Neighbourhood"
+     },
+     "latitude": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 90.0,
+        "minimum": -90.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latitude"
+     },
+     "longitude": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 180.0,
+        "minimum": -180.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Longitude"
+     },
+     "discovery_radius_m": {
+      "type": "integer",
+      "maximum": 50000.0,
+      "minimum": 100.0,
+      "title": "Discovery Radius M",
+      "default": 3000
+     },
+     "bedrooms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 50.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bedrooms"
+     },
+     "bathrooms": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 50.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bathrooms"
+     },
+     "max_guests": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 100.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Guests"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 5000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "amenities": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 100,
+      "title": "Amenities"
+     },
+     "details": {
+      "$ref": "#/components/schemas/PropertyDetails"
+     },
+     "is_placeholder": {
+      "type": "boolean",
+      "title": "Is Placeholder",
+      "default": false
+     },
+     "is_active": {
+      "type": "boolean",
+      "title": "Is Active",
+      "default": true
+     },
+     "guest_pin": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 12,
+        "minLength": 4,
+        "pattern": "^[0-9A-Za-z]+$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Guest Pin"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name",
+     "location_slug"
+    ],
+    "title": "PropertyCreate"
+   },
+   "PropertyDetails": {
+    "properties": {
+     "check_in_out": {
+      "$ref": "#/components/schemas/CheckInOut"
+     },
+     "facilities": {
+      "$ref": "#/components/schemas/Facilities"
+     },
+     "house_rules": {
+      "$ref": "#/components/schemas/HouseRules"
+     },
+     "emergency": {
+      "$ref": "#/components/schemas/Emergency"
+     },
+     "neighbourhood": {
+      "$ref": "#/components/schemas/Neighbourhood"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "PropertyDetails"
+   },
+   "PropertySummary": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "slug": {
+      "type": "string",
+      "title": "Slug"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "location_slug": {
+      "type": "string",
+      "title": "Location Slug"
+     },
+     "location_name": {
+      "type": "string",
+      "title": "Location Name"
+     },
+     "neighbourhood": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Neighbourhood"
+     },
+     "address": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Address"
+     },
+     "bedrooms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bedrooms"
+     },
+     "bathrooms": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bathrooms"
+     },
+     "max_guests": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Guests"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "amenities": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Amenities",
+      "default": []
+     },
+     "has_coordinates": {
+      "type": "boolean",
+      "title": "Has Coordinates",
+      "default": false
+     },
+     "requires_pin": {
+      "type": "boolean",
+      "title": "Requires Pin",
+      "default": false
+     },
+     "is_placeholder": {
+      "type": "boolean",
+      "title": "Is Placeholder",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "slug",
+     "name",
+     "location_slug",
+     "location_name"
+    ],
+    "title": "PropertySummary",
+    "description": "Public, non-sensitive view of a property shown to guests."
+   },
+   "PropertyUpdate": {
+    "properties": {
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 160,
+        "minLength": 2
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "location_slug": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location Slug"
+     },
+     "address": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 1000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Address"
+     },
+     "neighbourhood": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 160
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Neighbourhood"
+     },
+     "latitude": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 90.0,
+        "minimum": -90.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latitude"
+     },
+     "longitude": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 180.0,
+        "minimum": -180.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Longitude"
+     },
+     "discovery_radius_m": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 50000.0,
+        "minimum": 100.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Discovery Radius M"
+     },
+     "bedrooms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 50.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bedrooms"
+     },
+     "bathrooms": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 50.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bathrooms"
+     },
+     "max_guests": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 100.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Guests"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 5000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "amenities": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Amenities"
+     },
+     "details": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PropertyDetails"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "is_placeholder": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Is Placeholder"
+     },
+     "is_active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Is Active"
+     },
+     "guest_pin": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 12,
+        "pattern": "^([0-9A-Za-z]{4,12})?$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Guest Pin"
+     }
+    },
+    "type": "object",
+    "title": "PropertyUpdate"
+   },
+   "SessionCreate": {
+    "properties": {
+     "location_slug": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location Slug"
+     },
+     "property_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Property Id"
+     }
+    },
+    "type": "object",
+    "title": "SessionCreate"
+   },
+   "SessionOut": {
+    "properties": {
+     "session_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Session Id"
+     },
+     "session_token": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Session Token"
+     },
+     "location_slug": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location Slug"
+     },
+     "location_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location Name"
+     },
+     "property": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Property"
+     },
+     "available_properties": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Available Properties",
+      "default": []
+     },
+     "preferences": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Preferences",
+      "default": {}
+     },
+     "pin_verified": {
+      "type": "boolean",
+      "title": "Pin Verified",
+      "default": false
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "session_id",
+     "created_at"
+    ],
+    "title": "SessionOut"
+   },
+   "SessionSelect": {
+    "properties": {
+     "location_slug": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location Slug"
+     },
+     "property_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Property Id"
+     }
+    },
+    "type": "object",
+    "title": "SessionSelect"
+   },
+   "TokenOut": {
+    "properties": {
+     "access_token": {
+      "type": "string",
+      "title": "Access Token"
+     },
+     "token_type": {
+      "type": "string",
+      "title": "Token Type",
+      "default": "bearer"
+     },
+     "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Expires At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "access_token",
+     "expires_at"
+    ],
+    "title": "TokenOut"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  },
+  "securitySchemes": {
+   "HTTPBearer": {
+    "type": "http",
+    "scheme": "bearer"
+   }
+  }
+ }
+}

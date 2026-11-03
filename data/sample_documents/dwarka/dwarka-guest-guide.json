@@ -1,0 +1,31 @@
+{
+  "_comment": "FICTIONAL DEVELOPMENT DATA - not a real property. Replace via the admin dashboard.",
+  "property": {
+    "name": "Demo Property – Dwarka",
+    "type": "three-bedroom fictional apartment used for testing",
+    "host": "Demo Host Dwarka"
+  },
+  "check_in_and_check_out": {
+    "check_in_time": "1:00 PM",
+    "check_out_time": "10:30 AM",
+    "early_check_in": "Not available on weekends. On weekdays from 11:00 AM on request.",
+    "late_check_out": "Not available."
+  },
+  "wifi": {
+    "network_name": "DEMO-DWARKA-NET",
+    "wifi_password": "dwarka-demo-1357"
+  },
+  "parking": "One covered car parking spot is reserved for guests in the basement, slot B-12 (fictional).",
+  "facilities": {
+    "air_conditioning": "Split ACs in all three bedrooms.",
+    "kitchen": "Full kitchen with induction cooktop, microwave, toaster and mixer-grinder.",
+    "washing_machine": "Top-loading washing machine in the utility area.",
+    "television": "32-inch TV with cable connection.",
+    "power_backup": "Full power backup from the society generator.",
+    "drinking_water": "Bottled 20-litre water dispenser."
+  },
+  "emergency": {
+    "host_contact": "Demo Host Dwarka, +91-00000-00011 (placeholder number)",
+    "emergency_numbers": "112 for all emergencies"
+  }
+}
