@@ -39,7 +39,7 @@ from app.models import Conversation, Message, Property
 from app.rag.retriever import RetrievalResult, retrieve
 from app.schemas.common import PlaceResult
 from app.services import sessions as session_svc
-from app.services.properties import find_location
+from app.services.properties import find_location, list_locations
 
 log = logging.getLogger(__name__)
 
@@ -168,7 +168,19 @@ async def handle_message(db: AsyncSession, conv: Conversation, message: str) -> 
                 yield ev
             return
         if prop is None:
-            text = "Before I can help, which neighbourhood are you staying in — Dwarka, Janakpuri or Saket?"
+            # Name the neighbourhoods that actually have stays (never a hardcoded list).
+            names = [loc.name for loc in await list_locations(db) if loc.property_count]
+            if not names:
+                text = (
+                    "I can't find any stays set up yet, so I can't help with a property right now. "
+                    "If you're the host, add a property in the admin console (or load the demo data)."
+                )
+            else:
+                options = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " or " + names[-1]
+                text = (
+                    f"Before I can help, which neighbourhood are you staying in — {options}? "
+                    "Tap one of the cards above or just type the name."
+                )
             async for ev in _finish(db, conv, None, plan, text, [], False, {}, t0, None):
                 yield ev
             return

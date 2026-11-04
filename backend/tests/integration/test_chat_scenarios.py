@@ -218,8 +218,21 @@ async def test_message_before_location_asks_for_it(new_chat):
     chat = await new_chat()
     r = await chat.ask("What's the Wi-Fi password?")
     assert "which neighbourhood" in r["text"].lower()
-    r = await chat.ask("I'm staying in Saket")
-    assert "Saket" in r["text"]
+    for name in ("Dwarka", "Janakpuri", "Saket"):
+        assert name in r["text"]  # names come from the database
+    r = await chat.ask("Saket")
+    assert "Saket" in r["text"] and "session" in r["events"]
+
+
+async def test_no_properties_configured_says_so(new_chat, db, monkeypatch):
+    from app.services import orchestrator
+
+    async def no_locations(_db):
+        return []
+
+    monkeypatch.setattr(orchestrator, "list_locations", no_locations)
+    r = await (await new_chat()).ask("What's the Wi-Fi password?")
+    assert "can't find any stays set up" in r["text"]
 
 
 # ============================================================ hallucination
