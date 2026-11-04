@@ -86,6 +86,8 @@ def osm_headers() -> dict:
 # ------------------------------------------------------------------ Overpass (live)
 class OverpassProvider:
     name = "osm"
+    capacity_retries = True
+    capacity_retry_delay = 2.0
 
     def __init__(self, client: httpx.AsyncClient | None = None) -> None:
         s = get_settings()
@@ -111,6 +113,10 @@ class OverpassProvider:
     async def _query(self, url: str, query: str) -> list[dict]:
         try:
             resp = await self._client.post(url, data={"data": query})
+            if resp.status_code in (429, 502, 503, 504) and self.capacity_retries:
+                # "Server at capacity": the public servers ask clients to retry shortly.
+                await asyncio.sleep(self.capacity_retry_delay)
+                resp = await self._client.post(url, data={"data": query})
             if resp.status_code == 406:
                 # Some front ends reject form POSTs or header combinations: retry as GET.
                 resp = await self._client.get(url, params={"data": query})

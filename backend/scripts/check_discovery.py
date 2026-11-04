@@ -62,6 +62,13 @@ async def main() -> None:
     except DiscoveryError as exc:
         print(f"FAIL  Nominatim fallback  ({time.perf_counter() - t0:.1f}s) {exc}")
         nominatim_ok = False
+    from app.location.providers import get_snapshot
+
+    snap = get_snapshot()
+    print(f"\nSaved snapshot: {'yes, ' + str(snap.path) if snap.available else 'none yet'}")
+    if not snap.available:
+        print("  Recommended: python -m scripts.build_osm_snapshot (then restart the backend) -")
+        print("  guests then get places instantly, even when the public servers are busy.")
     if ok:
         print("\nResult: live search works (Overpass).")
     elif nominatim_ok:

@@ -144,7 +144,7 @@ Find your PC's IP address with `ipconfig` (e.g. `192.168.1.20`), then open `http
 | Live nearby-place search (OpenStreetMap Overpass) | Nearby places from the OSM snapshot or sample data |
 | "Find from address" in the admin console (Nominatim) | Admin console, uploads, re-indexing |
 
-**Real places offline:** run this once while online. It saves OpenStreetMap data around every property into the `app_data` volume, and the app uses it whenever live search is unavailable.
+**Real places, fast (recommended right after setup):** run this once. It saves OpenStreetMap data around every property into the `app_data` volume, and the app answers neighbourhood questions from it first: instantly, offline, and without depending on the busy public map servers. It retries patiently if the servers are at capacity and falls back to downloading a free Delhi map file. Then restart the backend with `docker compose restart backend`.
 
 ```bash
 docker compose exec backend python -m scripts.build_osm_snapshot
@@ -161,6 +161,7 @@ docker compose exec backend python -m scripts.build_osm_snapshot
 | Chat says "Can't reach the assistant right now" after ~30 s | Fixed in this version (the frontend relay allowed only 30 s per answer). Rebuild the frontend: `docker compose up --build -d` |
 | Answers are very slow | Use a smaller model (`OLLAMA_MODEL=qwen3:0.6b`) or give Docker more memory/CPUs |
 | Ollama container restarts / out of memory | Smaller model, or more memory in `.wslconfig` |
-| Places say "Live map search didn't respond" (or show "Sample · fictional") | Run `docker compose exec backend python -m scripts.check_discovery` to see what each OpenStreetMap server returned. The dashboard also shows the last error. Public Overpass servers are sometimes busy: try again, add another server in `OVERPASS_URLS`, and build a snapshot (`python -m scripts.build_osm_snapshot`) while it works |
+| Places say "Live map search didn't respond", or the diagnostic shows `502 … at capacity` | The free public map servers are overloaded. Build the snapshot (`docker compose exec backend python -m scripts.build_osm_snapshot`, then `docker compose restart backend`) so guests get answers from saved map data |
+| Places show "Sample · fictional" | Run `docker compose exec backend python -m scripts.check_discovery` to see what each OpenStreetMap server returned. The dashboard also shows the last error. Public Overpass servers are sometimes busy: try again, add another server in `OVERPASS_URLS`, and build a snapshot (`python -m scripts.build_osm_snapshot`) while it works |
 | Want to start completely fresh | `docker compose down -v` (deletes all data and the downloaded model) |
 | Backend unhealthy | `docker compose logs backend`; usually ChromaDB not ready yet; `docker compose restart backend` |

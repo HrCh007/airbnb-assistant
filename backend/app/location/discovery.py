@@ -171,12 +171,31 @@ def _keyword(query: str, category: Category | None) -> str | None:
     return " ".join(words[:2]) or None
 
 
+def _snapshot_age_note(snapshot) -> str | None:
+    """Only mention the snapshot date when it is getting old (> 90 days)."""
+    from datetime import UTC, datetime
+
+    raw = snapshot.meta.get("generated_at")
+    try:
+        when = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except (AttributeError, ValueError):
+        return None
+    if (datetime.now(UTC) - when).days > 90:
+        return f"Using saved map data from {when.date()}; some places may have changed."
+    return None
+
+
 async def _fetch(spec: SearchSpec, cache_key: str) -> tuple[list[RawPlace], str, str | None, bool]:
     """Returns (places, provider_name, notice, error)."""
     global _live_down_until
     s = get_settings()
     notice = None
     error = False
+    snapshot = get_snapshot()
+    if s.discovery_prefer_snapshot and snapshot.available:
+        places = await snapshot.search(spec)
+        if places:
+            return places, "osm_snapshot", _snapshot_age_note(snapshot), False
     if s.discovery_live and time.monotonic() >= _live_down_until:
         key = f"osm|{cache_key}"
         cached = _cache.get(key)
@@ -199,8 +218,7 @@ async def _fetch(spec: SearchSpec, cache_key: str) -> tuple[list[RawPlace], str,
         error = True
         notice = ("Live map search (OpenStreetMap) didn't respond just now, so I can't look up current places. "
                   "Please try again in a minute.")
-    snapshot = get_snapshot()
-    if snapshot.available:
+    if snapshot.available and not s.discovery_prefer_snapshot:
         places = await snapshot.search(spec)
         date = snapshot.meta.get("generated_at", "")[:10]
         snap_note = f"Using saved OpenStreetMap data{f' from {date}' if date else ''}; details may have changed."

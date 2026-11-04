@@ -131,7 +131,14 @@ async def test_snapshot_is_preferred_over_sample(new_chat, fake_osm, tmp_path):
     set_providers(overpass=fake_osm, snapshot=DatasetProvider(snap, "osm_snapshot"))
     r = await (await new_chat("saket")).ask("Any cafes nearby?")
     assert [p["name"] for p in r["places"]] == ["Snapshot Cafe"] and r["places"][0]["source"] == "osm_snapshot"
-    assert "2026-10-01" in r["text"]
+    # Recent snapshots stay quiet; old ones mention their date.
+    snap.write_text(snap.read_text().replace("2026-10-01T00:00:00Z", "2020-01-01T00:00:00Z"))
+    set_providers(overpass=fake_osm, snapshot=DatasetProvider(snap, "osm_snapshot"))
+    from app.location import discovery
+
+    discovery.clear_cache()
+    r = await (await new_chat("saket")).ask("Any cafes nearby?")
+    assert "2020-01-01" in r["text"]
 
 
 async def test_no_results_is_said_honestly(new_chat, fake_osm):
@@ -314,3 +321,20 @@ async def test_slow_searches_keep_the_stream_alive(new_chat, fake_osm, client, m
     assert "event: status" in raw and "cinema" in raw.lower()
     assert "event: places" in raw and "event: done" in raw
     assert fake_osm.calls[-1].category.key == "cinema"
+
+
+async def test_snapshot_first_skips_live_servers(new_chat, fake_osm, tmp_path):
+    import json
+
+    from app.location.providers import DatasetProvider, set_providers
+
+    snap = tmp_path / "osm_snapshot.json"
+    snap.write_text(json.dumps({"generated_at": "2099-01-01T00:00:00+00:00", "places": [
+        {"osm_id": "node/1", "name": "PVR Test Cinema", "lat": 28.5260, "lon": 77.2070, "tags": {"amenity": "cinema"}}]}))
+    set_providers(overpass=fake_osm, snapshot=DatasetProvider(snap, "osm_snapshot"))
+    r = await (await new_chat("saket")).ask("Suggest me some good cinema halls nearby")
+    assert [p["name"] for p in r["places"]] == ["PVR Test Cinema"] and r["places"][0]["source"] == "osm_snapshot"
+    assert fake_osm.calls == []  # answered instantly from the snapshot
+    # Nothing in the snapshot for this one -> falls through to live search.
+    r = await (await new_chat("saket")).ask("Where's the nearest pharmacy?")
+    assert fake_osm.calls and r["places"][0]["source"] == "osm"

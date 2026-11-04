@@ -83,6 +83,9 @@ class Settings(BaseSettings):
         "https://overpass.kumi.systems/api/interpreter,"
         "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
     )
+    # Use the saved OpenStreetMap snapshot first (instant, offline); go live only when
+    # the snapshot has nothing for a question. Build it with scripts.build_osm_snapshot.
+    discovery_prefer_snapshot: bool = True
     # When every Overpass server fails, search OpenStreetMap's Nominatim instead.
     discovery_nominatim_fallback: bool = True
     overpass_url: str = ""  # legacy single-server setting; if set, it is tried first

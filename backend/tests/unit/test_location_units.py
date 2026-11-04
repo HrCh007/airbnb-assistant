@@ -242,6 +242,7 @@ async def test_overpass_tries_next_server_and_reports_reasons(monkeypatch):
         return httpx.Response(200, json=OVERPASS_JSON)
 
     provider = OverpassProvider(httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    provider.capacity_retries = False
     res = await provider.search(SearchSpec(latitude=28.5245, longitude=77.2066, radius_m=1000, category=category_by_key("cafe")))
     assert hosts == ["a.example", "b.example"] and [r.name for r in res] == ["Real Cafe", "Big Cafe"]
     assert HEALTH.last_ok_server == "b.example"
@@ -289,6 +290,7 @@ async def test_recently_failed_server_is_skipped(monkeypatch):
         return httpx.Response(504) if request.url.host == "slow.example" else httpx.Response(200, json=OVERPASS_JSON)
 
     provider = OverpassProvider(httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    provider.capacity_retries = False
     spec = SearchSpec(latitude=1, longitude=2, radius_m=500, category=category_by_key("cafe"))
     await provider.search(spec)
     await provider.search(spec)
@@ -331,6 +333,26 @@ async def test_overpass_total_time_budget(monkeypatch):
         return httpx.Response(504)
 
     provider = OverpassProvider(httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    provider.capacity_retries = False
     with pytest.raises(DiscoveryError, match="time budget"):
         await provider.search(SearchSpec(latitude=1, longitude=2, radius_m=500, category=category_by_key("cafe")))
     assert hosts == ["a.example"]  # stopped after the budget, didn't try the rest
+
+
+async def test_overpass_retries_once_when_at_capacity(monkeypatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "overpass_url", "")
+    monkeypatch.setattr(get_settings(), "overpass_urls", "https://busy.example/api/interpreter")
+    calls = []
+
+    def handler(request):
+        calls.append(request.method)
+        if len(calls) == 1:
+            return httpx.Response(502, text="This Overpass API server is currently at capacity.")
+        return httpx.Response(200, json=OVERPASS_JSON)
+
+    provider = OverpassProvider(httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    provider.capacity_retry_delay = 0
+    res = await provider.search(SearchSpec(latitude=1, longitude=2, radius_m=500, category=category_by_key("cafe")))
+    assert len(calls) == 2 and len(res) == 2

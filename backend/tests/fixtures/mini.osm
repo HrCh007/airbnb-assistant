@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="test">
+  <node id="1" lat="28.5260" lon="77.2070" version="1"><tag k="amenity" v="cinema"/><tag k="name" v="PVR Test Cinema"/></node>
+  <node id="2" lat="28.5250" lon="77.2080" version="1"><tag k="amenity" v="cafe"/><tag k="name" v="Test Coffee"/><tag k="opening_hours" v="Mo-Su 08:00-23:00"/></node>
+  <node id="3" lat="28.5250" lon="77.2080" version="1"><tag k="amenity" v="bench"/><tag k="name" v="A Bench"/></node>
+  <node id="4" lat="28.9000" lon="77.5000" version="1"><tag k="amenity" v="cafe"/><tag k="name" v="Far Away Cafe"/></node>
+  <node id="5" lat="28.5270" lon="77.2100" version="1"><tag k="amenity" v="pharmacy"/></node>
+  <node id="10" lat="28.5230" lon="77.2050" version="1"/>
+  <node id="11" lat="28.5232" lon="77.2054" version="1"/>
+  <node id="12" lat="28.5228" lon="77.2056" version="1"/>
+  <way id="100" version="1"><nd ref="10"/><nd ref="11"/><nd ref="12"/><nd ref="10"/><tag k="shop" v="mall"/><tag k="name" v="Test Mall"/></way>
+</osm>
