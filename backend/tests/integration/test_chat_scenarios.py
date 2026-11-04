@@ -267,3 +267,23 @@ async def test_live_failure_without_sample_data_is_honest(new_chat, fake_osm, mo
     fake_osm.fail = True
     r = await (await new_chat("saket")).ask("Suggest some cafes nearby")
     assert r["places"] == [] and "didn't respond" in r["text"] and "[Sample]" not in r["text"]
+
+
+async def test_nominatim_used_when_overpass_fails(new_chat, fake_osm, monkeypatch):
+    from app.core.config import get_settings
+    from app.location.providers import RawPlace, set_providers
+
+    class FakeNominatim:
+        calls = 0
+
+        async def search(self, spec):
+            FakeNominatim.calls += 1
+            return [RawPlace(osm_id="node/9", name="Nominatim Cafe", lat=spec.latitude + 0.002, lon=spec.longitude,
+                             tags={"amenity": "cafe", "name": "Nominatim Cafe"}, source="osm")]
+
+    monkeypatch.setattr(get_settings(), "discovery_nominatim_fallback", True)
+    fake_osm.fail = True
+    set_providers(overpass=fake_osm, nominatim=FakeNominatim())
+    r = await (await new_chat("saket")).ask("Any cafes nearby?")
+    assert FakeNominatim.calls == 1 and [p["name"] for p in r["places"]] == ["Nominatim Cafe"]
+    assert r["places"][0]["source"] == "osm" and "didn't respond" not in r["text"]

@@ -251,3 +251,68 @@ async def test_overpass_tries_next_server_and_reports_reasons(monkeypatch):
         await provider.search(SearchSpec(latitude=1, longitude=2, radius_m=500, category=category_by_key("cafe")))
     assert "a.example: HTTP 429" in str(exc.value) and "b.example: HTTP 429" in str(exc.value)
     assert "HTTP 429" in HEALTH.last_error
+
+
+async def test_overpass_406_retries_as_get_and_explains(monkeypatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "overpass_url", "")
+    monkeypatch.setattr(get_settings(), "overpass_urls", "https://a.example/api/interpreter")
+    seen = []
+
+    def handler(request):
+        seen.append((request.method, request.headers.get("accept-language")))
+        if request.method == "POST":
+            return httpx.Response(406, text="<html>406 Not Acceptable nginx</html>")
+        return httpx.Response(200, json=OVERPASS_JSON)
+
+    from app.location.providers import osm_headers
+
+    provider = OverpassProvider(httpx.AsyncClient(transport=httpx.MockTransport(handler), headers=osm_headers()))
+    res = await provider.search(SearchSpec(latitude=28.5, longitude=77.2, radius_m=1000, category=category_by_key("cafe")))
+    assert [m for m, _ in seen] == ["POST", "GET"] and seen[0][1].startswith("en") and len(res) == 2
+
+    provider = OverpassProvider(httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(406))))
+    with pytest.raises(DiscoveryError, match="OSM_USER_AGENT"):
+        await provider.search(SearchSpec(latitude=1, longitude=2, radius_m=500, category=category_by_key("cafe")))
+
+
+async def test_recently_failed_server_is_skipped(monkeypatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "overpass_url", "")
+    monkeypatch.setattr(get_settings(), "overpass_urls", "https://slow.example/api/interpreter,https://ok.example/api/interpreter")
+    hosts = []
+
+    def handler(request):
+        hosts.append(request.url.host)
+        return httpx.Response(504) if request.url.host == "slow.example" else httpx.Response(200, json=OVERPASS_JSON)
+
+    provider = OverpassProvider(httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    spec = SearchSpec(latitude=1, longitude=2, radius_m=500, category=category_by_key("cafe"))
+    await provider.search(spec)
+    await provider.search(spec)
+    assert hosts == ["slow.example", "ok.example", "ok.example"]  # second search skips the failing server
+
+
+async def test_nominatim_fallback_parses_places():
+    from app.location.providers import NominatimProvider
+
+    seen = {}
+
+    def handler(request):
+        seen.update(dict(request.url.params))
+        return httpx.Response(200, json=[
+            {"osm_type": "node", "osm_id": 55, "lat": "28.5250", "lon": "77.2070", "name": "Blue Tokai", "category": "amenity",
+             "type": "cafe", "display_name": "Blue Tokai, Select Citywalk, Saket, New Delhi, India", "extratags": {"opening_hours": "Mo-Su 08:00-23:00"}},
+            {"osm_type": "way", "osm_id": 9, "lat": "28.52", "lon": "77.20", "name": "", "display_name": ""},
+        ])
+
+    provider = NominatimProvider(httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    res = await provider.search(SearchSpec(latitude=28.5245, longitude=77.2066, radius_m=1000, category=category_by_key("cafe")))
+    assert seen["q"] == "cafe" and seen["bounded"] == "1" and seen["extratags"] == "1"
+    west, north, east, south = map(float, seen["viewbox"].split(","))
+    assert west < 77.2066 < east and south < 28.5245 < north
+    assert len(res) == 1 and res[0].osm_id == "node/55" and res[0].tags["amenity"] == "cafe"
+    p = to_place_result(res[0], 28.5245, 77.2066, None)
+    assert p.opening_hours == "Mo-Su 08:00-23:00" and p.address.startswith("Select Citywalk") and p.source == "osm"

@@ -24,9 +24,10 @@ All settings are optional. Put overrides in `.env` next to `docker-compose.yml` 
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `900` / `150` | Characters per chunk / overlap |
 | `RETRIEVAL_TOP_K` | `6` | Chunks given to the model |
 | `DISCOVERY_LIVE` | `true` | Live OpenStreetMap (Overpass) searches |
-| `OVERPASS_URLS` | overpass-api.de, overpass.private.coffee, overpass.kumi.systems | Comma-separated Overpass servers, tried in order until one answers |
+| `OVERPASS_URLS` | overpass-api.de, overpass.private.coffee, overpass.kumi.systems, maps.mail.ru | Comma-separated Overpass servers, tried in order; a failing server is skipped for 5 minutes |
+| `DISCOVERY_NOMINATIM_FALLBACK` | `true` | If every Overpass server fails, search OpenStreetMap's Nominatim (max 40 results, 1 request/s) |
 | `NOMINATIM_URL` | `https://nominatim.openstreetmap.org` | Geocoding in the admin console |
-| `OSM_USER_AGENT` | generic | **Set your business name and email** (OSM usage policy) |
+| `OSM_USER_AGENT` | generic | **Required in practice:** app name + a real contact email. overpass-api.de answers HTTP 406 to requests it can't identify |
 | `DISCOVERY_SAMPLE_DATA` | `false` | Fictional sample places as the last fallback (demo only) |
 | `DEFAULT_DISCOVERY_RADIUS_M` | `3000` | Used when a property has no radius set |
 | `ALLOWED_RADII_KM` | `1,3,5,10` | Radius chips shown to guests |

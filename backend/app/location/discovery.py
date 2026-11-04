@@ -28,6 +28,7 @@ from app.location.providers import (
     DiscoveryError,
     RawPlace,
     SearchSpec,
+    get_nominatim,
     get_overpass,
     get_sample,
     get_snapshot,
@@ -186,11 +187,18 @@ async def _fetch(spec: SearchSpec, cache_key: str) -> tuple[list[RawPlace], str,
             _cache[key] = (time.monotonic(), places)
             return places, "osm", None, False
         except DiscoveryError as exc:
-            log.warning("Live OSM search failed on every server: %s", exc)
-            _live_down_until = time.monotonic() + s.discovery_failure_cooldown_seconds
-            error = True
-            notice = ("Live map search (OpenStreetMap) didn't respond just now, so I can't look up current places. "
-                      "Please try again in a minute.")
+            log.warning("Live OSM search failed on every Overpass server: %s", exc)
+        if s.discovery_nominatim_fallback:
+            try:
+                places = await get_nominatim().search(spec)
+                _cache[key] = (time.monotonic(), places)
+                return places, "osm", None, False
+            except DiscoveryError as exc:
+                log.warning("Nominatim fallback failed too: %s", exc)
+        _live_down_until = time.monotonic() + s.discovery_failure_cooldown_seconds
+        error = True
+        notice = ("Live map search (OpenStreetMap) didn't respond just now, so I can't look up current places. "
+                  "Please try again in a minute.")
     snapshot = get_snapshot()
     if snapshot.available:
         places = await snapshot.search(spec)

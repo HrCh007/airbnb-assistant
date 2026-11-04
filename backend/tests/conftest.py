@@ -31,6 +31,7 @@ os.environ.update(
         "OLLAMA_URL": "http://127.0.0.1:9",  # nothing listens here: Ollama "unreachable"
         "DISCOVERY_LIVE": "true",
         "DISCOVERY_SAMPLE_DATA": "true",
+        "DISCOVERY_NOMINATIM_FALLBACK": "false",  # enabled per-test with a fake
         "SECRET_KEY": "test-secret-key-for-unit-tests-only-0123456789",
         "RATE_LIMIT_CHAT_PER_MINUTE": "10000",
         "RATE_LIMIT_DEFAULT_PER_MINUTE": "10000",

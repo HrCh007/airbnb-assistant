@@ -46,7 +46,7 @@ A zero-cost, self-hosted RAG assistant. Every component is open source and runs 
 4. **Switch property** if the guest says so ("actually I'm in Dwarka").
 5. **Property RAG**, for property, mixed, emergency and neighbourhood intents. A vector search runs in the property's own ChromaDB collection, BM25 keyword search runs over the same property's chunks in SQLite, and the two are combined with reciprocal rank fusion. Sensitive chunks (Wi-Fi password, door codes) are withheld until the guest's PIN is verified, if the property has one.
 6. **Local discovery**, when the plan needs places. Searches run around the property's **exact coordinates**, trying in order:
-   1. live Overpass (`source: osm`);
+   1. live Overpass, trying several free servers (`source: osm`), then OpenStreetMap's Nominatim search;
    2. the saved snapshot (`osm_snapshot`);
    3. the fictional sample dataset (`sample`).
 

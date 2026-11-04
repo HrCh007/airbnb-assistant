@@ -80,13 +80,16 @@ class Settings(BaseSettings):
     overpass_urls: str = (
         "https://overpass-api.de/api/interpreter,"
         "https://overpass.private.coffee/api/interpreter,"
-        "https://overpass.kumi.systems/api/interpreter"
+        "https://overpass.kumi.systems/api/interpreter,"
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
     )
+    # When every Overpass server fails, search OpenStreetMap's Nominatim instead.
+    discovery_nominatim_fallback: bool = True
     overpass_url: str = ""  # legacy single-server setting; if set, it is tried first
     nominatim_url: str = "https://nominatim.openstreetmap.org"
     # OSM usage policies require an identifying User-Agent with contact details.
     osm_user_agent: str = "HideoutStudiosGuestAssistant/1.0 (self-hosted; set OSM_USER_AGENT with your contact)"
-    discovery_timeout_seconds: float = 25.0
+    discovery_timeout_seconds: float = 12.0
     discovery_cache_ttl_seconds: int = 3600
     # After a live failure, skip live calls for this long and use local datasets.
     discovery_failure_cooldown_seconds: int = 60

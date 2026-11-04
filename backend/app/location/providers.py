@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import re
 import time
 from dataclasses import dataclass, field
@@ -73,6 +74,15 @@ def keyword_selectors(keyword: str) -> tuple[str, ...]:
     ) + (f'["cuisine"~"{kw}",i]',)
 
 
+def osm_headers() -> dict:
+    """Identify the app clearly (OSM usage policies) and look like a normal HTTP client."""
+    return {
+        "User-Agent": get_settings().osm_user_agent,
+        "Accept": "application/json,text/plain;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-IN,en;q=0.9",
+    }
+
+
 # ------------------------------------------------------------------ Overpass (live)
 class OverpassProvider:
     name = "osm"
@@ -80,11 +90,11 @@ class OverpassProvider:
     def __init__(self, client: httpx.AsyncClient | None = None) -> None:
         s = get_settings()
         self._client = client or httpx.AsyncClient(
-            timeout=httpx.Timeout(s.discovery_timeout_seconds + 5, connect=5.0),
-            headers={"User-Agent": s.osm_user_agent},
+            timeout=httpx.Timeout(s.discovery_timeout_seconds + 3, connect=5.0), headers=osm_headers()
         )
         self._lock = asyncio.Lock()
         self._last_request: dict[str, float] = {}  # per server: at most 1 request/second
+        self._down_until: dict[str, float] = {}  # per server: skip after a failure
 
     def build_query(self, spec: SearchSpec) -> str:
         s = get_settings()
@@ -101,10 +111,17 @@ class OverpassProvider:
     async def _query(self, url: str, query: str) -> list[dict]:
         try:
             resp = await self._client.post(url, data={"data": query})
+            if resp.status_code == 406:
+                # Some front ends reject form POSTs or header combinations: retry as GET.
+                resp = await self._client.get(url, params={"data": query})
         except httpx.TimeoutException as exc:
             raise DiscoveryError(f"{_host(url)}: timed out") from exc
         except httpx.HTTPError as exc:
             raise DiscoveryError(f"{_host(url)}: unreachable ({type(exc).__name__}: {str(exc)[:120]})") from exc
+        if resp.status_code == 406:
+            raise DiscoveryError(
+                f"{_host(url)}: HTTP 406 (request refused - set OSM_USER_AGENT to your app name and a real contact email)"
+            )
         if resp.status_code >= 400:
             raise DiscoveryError(f"{_host(url)}: HTTP {resp.status_code} {_remark(resp.text)}".strip())
         try:
@@ -119,8 +136,11 @@ class OverpassProvider:
         """Try each configured Overpass server in turn; raise with every reason if all fail."""
         query = self.build_query(spec)
         errors: list[str] = []
+        s = get_settings()
         async with self._lock:  # one request at a time (fair use)
-            for url in get_settings().overpass_endpoints:
+            urls = s.overpass_endpoints
+            live = [u for u in urls if time.monotonic() >= self._down_until.get(u, 0.0)] or urls
+            for url in live:
                 wait = 1.0 - (time.monotonic() - self._last_request.get(url, 0.0))
                 if wait > 0:
                     await asyncio.sleep(wait)
@@ -129,8 +149,10 @@ class OverpassProvider:
                     elements = await self._query(url, query)
                 except DiscoveryError as exc:
                     errors.append(str(exc))
+                    self._down_until[url] = time.monotonic() + s.discovery_failure_cooldown_seconds * 5
                     log.warning("Overpass server failed - %s", exc)
                     continue
+                self._down_until.pop(url, None)
                 HEALTH.record_ok(url)
                 return [p for p in (element_to_place(e, "osm") for e in elements) if p is not None]
         HEALTH.record_error("; ".join(errors) or "no Overpass servers configured")
@@ -184,6 +206,75 @@ def element_to_place(e: dict, source: str) -> RawPlace | None:
     return RawPlace(osm_id=osm_id, name=str(name)[:200], lat=float(lat), lon=float(lon), tags=tags, source=source)
 
 
+# ------------------------------------------------------------------ Nominatim (live fallback)
+class NominatimProvider:
+    """Fallback live source: OpenStreetMap's own search service (nominatim.openstreetmap.org).
+
+    Searches a category phrase ("cafe", "pharmacy") inside a box around the
+    property. Fewer details than Overpass (max 40 results, tags via extratags),
+    but it answers when the public Overpass servers are busy. Usage policy:
+    at most 1 request per second, identifying User-Agent - both enforced here.
+    """
+
+    name = "osm"
+
+    def __init__(self, client: httpx.AsyncClient | None = None) -> None:
+        self._client = client or httpx.AsyncClient(timeout=httpx.Timeout(12.0, connect=5.0), headers=osm_headers())
+        self._lock = asyncio.Lock()
+        self._last = 0.0
+
+    @staticmethod
+    def phrase(spec: SearchSpec) -> str | None:
+        if spec.keyword:
+            return spec.keyword
+        if spec.category:
+            return spec.category.label.replace("-", " ")
+        return None
+
+    async def search(self, spec: SearchSpec) -> list[RawPlace]:
+        q = self.phrase(spec)
+        if not q:
+            raise DiscoveryError("nominatim: nothing to search for")
+        dlat = spec.radius_m / 111_320
+        dlon = spec.radius_m / (111_320 * max(0.2, math.cos(math.radians(spec.latitude))))
+        params = {
+            "q": q, "format": "jsonv2", "limit": 40, "bounded": 1, "extratags": 1, "countrycodes": "in",
+            "viewbox": f"{spec.longitude - dlon:.6f},{spec.latitude + dlat:.6f},{spec.longitude + dlon:.6f},{spec.latitude - dlat:.6f}",
+        }
+        url = f"{get_settings().nominatim_url.rstrip('/')}/search"
+        async with self._lock:
+            wait = 1.1 - (time.monotonic() - self._last)
+            if wait > 0:
+                await asyncio.sleep(wait)
+            self._last = time.monotonic()
+            try:
+                resp = await self._client.get(url, params=params)
+            except httpx.TimeoutException as exc:
+                raise DiscoveryError("nominatim: timed out") from exc
+            except httpx.HTTPError as exc:
+                raise DiscoveryError(f"nominatim: unreachable ({type(exc).__name__})") from exc
+        if resp.status_code >= 400:
+            raise DiscoveryError(f"nominatim: HTTP {resp.status_code}")
+        try:
+            items = resp.json()
+        except ValueError as exc:
+            raise DiscoveryError("nominatim: not JSON") from exc
+        out = []
+        for it in items:
+            name = it.get("name") or (it.get("display_name") or "").split(",")[0]
+            if not name or it.get("lat") is None:
+                continue
+            tags = {**(it.get("extratags") or {}), "name": name}
+            if it.get("category") and it.get("type"):
+                tags.setdefault(it["category"], it["type"])
+            if it.get("display_name") and "addr:full" not in tags:
+                tags["addr:full"] = ", ".join(x.strip() for x in it["display_name"].split(",")[1:4])
+            osm_id = f"{it['osm_type']}/{it['osm_id']}" if it.get("osm_type") and it.get("osm_id") else None
+            out.append(RawPlace(osm_id=osm_id, name=name[:200], lat=float(it["lat"]), lon=float(it["lon"]), tags=tags, source="osm"))
+        HEALTH.record_ok(url)
+        return out
+
+
 # ------------------------------------------------------------------ local datasets
 class DatasetProvider:
     """Searches a local JSON dataset with the same selectors as Overpass."""
@@ -230,6 +321,7 @@ class DatasetProvider:
 
 
 _overpass: OverpassProvider | None = None
+_nominatim: NominatimProvider | None = None
 _snapshot: DatasetProvider | None = None
 _sample: DatasetProvider | None = None
 
@@ -239,6 +331,13 @@ def get_overpass() -> OverpassProvider:
     if _overpass is None:
         _overpass = OverpassProvider()
     return _overpass
+
+
+def get_nominatim() -> NominatimProvider:
+    global _nominatim
+    if _nominatim is None:
+        _nominatim = NominatimProvider()
+    return _nominatim
 
 
 def get_snapshot() -> DatasetProvider:
@@ -260,7 +359,7 @@ def get_sample() -> DatasetProvider:
     return _sample
 
 
-def set_providers(overpass=None, snapshot=None, sample=None) -> None:
+def set_providers(overpass=None, snapshot=None, sample=None, nominatim=None) -> None:
     """Override (tests). Pass None to reset to defaults."""
-    global _overpass, _snapshot, _sample
-    _overpass, _snapshot, _sample = overpass, snapshot, sample
+    global _overpass, _snapshot, _sample, _nominatim
+    _overpass, _snapshot, _sample, _nominatim = overpass, snapshot, sample, nominatim
