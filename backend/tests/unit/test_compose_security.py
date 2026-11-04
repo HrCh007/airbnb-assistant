@@ -100,3 +100,15 @@ def test_log_redaction():
     rec = logging.LogRecord("x", logging.INFO, "f", 1, "key sk-ant-api03-abcdefghijklmnopqrstuvwxyz password=hunter2", None, None)
     RedactingFilter().filter(rec)
     assert "abcdefghijklmnop" not in rec.getMessage() and "hunter2" not in rec.getMessage()
+
+
+def test_comment_text_from_env_file_is_not_treated_as_a_key(monkeypatch):
+    from app.core.config import Settings
+
+    monkeypatch.setenv("OPENAI_API_KEY", "# https://platform.openai.com/api-keys")
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "   # comment")
+    monkeypatch.setenv("EMBEDDING_PROVIDER", "auto")
+    monkeypatch.setenv("PLACES_PROVIDER", "auto")
+    s = Settings()
+    assert s.openai_api_key == "" and s.resolved_embedding_provider == "local"
+    assert s.google_maps_api_key == "" and s.resolved_places_provider == "disabled"

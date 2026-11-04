@@ -100,6 +100,18 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_service_role_key: str = ""
 
+    @field_validator(
+        "anthropic_api_key", "openai_api_key", "google_maps_api_key", "secret_key",
+        "supabase_service_role_key", "admin_password", mode="before",
+    )
+    @classmethod
+    def _ignore_comment_values(cls, v):
+        # Docker Compose passes "KEY=   # comment" through as the literal value
+        # "# comment"; treat that as unset rather than as a (bogus) credential.
+        if isinstance(v, str) and v.strip().startswith("#"):
+            return ""
+        return v.strip() if isinstance(v, str) else v
+
     @field_validator("database_url")
     @classmethod
     def _normalise_db_url(cls, v: str) -> str:
