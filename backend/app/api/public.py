@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -167,16 +168,40 @@ async def chat_message(body: ChatMessageIn, token: str | None = Depends(session_
         await session_svc.load_session(db, body.session_id, token)
 
     async def event_stream():
-        async with get_sessionmaker()() as db:
-            try:
-                conv = await session_svc.load_session(db, body.session_id, token)
-                async for ev in handle_message(db, conv, body.message):
-                    yield f"event: {ev['event']}\ndata: {json.dumps(ev['data'], default=str, ensure_ascii=False)}\n\n"
-            except Exception as exc:  # stream an understandable error instead of a broken connection
-                log.exception("Chat pipeline failed: %s", type(exc).__name__)
-                await db.rollback()
-                msg = "Sorry, something went wrong on my side. Please try again in a moment."
-                yield f"event: error\ndata: {json.dumps({'message': msg})}\n\n"
+        """Run the pipeline in a task and relay its events. If nothing is sent for a
+        few seconds (slow map servers, CPU-only LLM), emit an SSE comment so proxies
+        and browsers keep the connection open."""
+        queue: asyncio.Queue[str | None] = asyncio.Queue()
+
+        async def produce() -> None:
+            async with get_sessionmaker()() as db:
+                try:
+                    conv = await session_svc.load_session(db, body.session_id, token)
+                    async for ev in handle_message(db, conv, body.message):
+                        await queue.put(f"event: {ev['event']}\ndata: {json.dumps(ev['data'], default=str, ensure_ascii=False)}\n\n")
+                except Exception as exc:  # stream an understandable error instead of a broken connection
+                    log.exception("Chat pipeline failed: %s", type(exc).__name__)
+                    await db.rollback()
+                    msg = "Sorry, something went wrong on my side. Please try again in a moment."
+                    await queue.put(f"event: error\ndata: {json.dumps({'message': msg})}\n\n")
+                finally:
+                    await queue.put(None)
+
+        task = asyncio.create_task(produce())
+        heartbeat = get_settings().sse_heartbeat_seconds
+        try:
+            while True:
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=heartbeat)
+                except TimeoutError:
+                    yield ": keep-alive\n\n"
+                    continue
+                if item is None:
+                    break
+                yield item
+        finally:
+            if not task.done():
+                task.cancel()
 
     return StreamingResponse(
         event_stream(),

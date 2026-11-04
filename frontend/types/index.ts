@@ -85,6 +85,7 @@ export interface ChatMessage {
   placesPrevious?: boolean;
   suggestions: string[];
   pending?: boolean;
+  status?: string;
   error?: boolean;
   created_at?: string;
 }

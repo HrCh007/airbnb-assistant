@@ -287,3 +287,30 @@ async def test_nominatim_used_when_overpass_fails(new_chat, fake_osm, monkeypatc
     r = await (await new_chat("saket")).ask("Any cafes nearby?")
     assert FakeNominatim.calls == 1 and [p["name"] for p in r["places"]] == ["Nominatim Cafe"]
     assert r["places"][0]["source"] == "osm" and "didn't respond" not in r["text"]
+
+
+async def test_slow_searches_keep_the_stream_alive(new_chat, fake_osm, client, monkeypatch):
+    """Proxies drop silent connections: the stream must send keep-alives and progress."""
+    import asyncio
+
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "sse_heartbeat_seconds", 0.1)
+    original = fake_osm.search
+
+    async def slow_search(spec):
+        await asyncio.sleep(0.5)
+        return await original(spec)
+
+    monkeypatch.setattr(fake_osm, "search", slow_search)
+    chat = await new_chat("saket")
+    raw = ""
+    async with client.stream("POST", "/api/chat/message", json={"session_id": chat.sid, "message": "Suggest some cinema halls nearby"},
+                             headers=chat.headers) as r:
+        assert r.status_code == 200
+        async for chunk in r.aiter_text():
+            raw += chunk
+    assert raw.count(": keep-alive") >= 2
+    assert "event: status" in raw and "cinema" in raw.lower()
+    assert "event: places" in raw and "event: done" in raw
+    assert fake_osm.calls[-1].category.key == "cinema"

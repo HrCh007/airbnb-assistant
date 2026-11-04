@@ -6,6 +6,7 @@ property RAG (if needed) -> local discovery (if needed) -> answer
 
 SSE events:
   session      updated session state (after a location switch)
+  status       short progress text while searching / generating
   meta         {intent, planner, llm, discovery}
   places       recommendation cards
   token        text delta
@@ -203,6 +204,11 @@ async def handle_message(db: AsyncSession, conv: Conversation, message: str) -> 
         if pp.action == "filter_previous" and prev_places:
             places, places_previous = prev_places, True
         else:
+            from app.location.categories import category_by_key
+
+            cat = category_by_key(pp.category_key)
+            what = pp.keyword or (cat.label if cat else pp.query)
+            yield _ev("status", f"Searching OpenStreetMap for {what} near your stay…")
             radius = pp.radius_m or (int(prefs.max_distance_km * 1000) if prefs.max_distance_km else None)
             result = await discover(db, prop, DiscoveryRequest(
                 query=pp.query, category_key=pp.category_key, keyword=pp.keyword, radius_m=radius,
@@ -242,6 +248,7 @@ async def handle_message(db: AsyncSession, conv: Conversation, message: str) -> 
     replaced = False
 
     if use_llm:
+        yield _ev("status", "Writing your answer…")
         user_turn = build_user_turn(
             message=message, plan=plan,
             property_info={"name": prop.name, "location_name": prop.location.name, "neighbourhood": prop.neighbourhood},

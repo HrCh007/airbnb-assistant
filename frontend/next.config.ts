@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
   },
   // Don't gzip-buffer the proxied Server-Sent Events chat stream.
   compress: false,
+  experimental: {
+    // The /api proxy cuts requests off after 30 s (total, not idle) by default. A chat
+    // answer can take longer on a CPU-only machine (map search + local LLM): allow 10 min.
+    proxyTimeout: Number(process.env.API_PROXY_TIMEOUT_MS || 600_000),
+  },
   cacheComponents: true,
   partialPrefetching: true,
   // Self-contained server bundle for the Docker image.

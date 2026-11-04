@@ -34,6 +34,9 @@ All settings are optional. Put overrides in `.env` next to `docker-compose.yml` 
 | `DISCOVERY_CACHE_TTL_SECONDS` | `3600` | Cache for live results |
 | `RANK_WEIGHT_*` | relevance .40, distance .35, open .10, preference .10, completeness .05 | Recommendation ranking |
 | `RATE_LIMIT_CHAT_PER_MINUTE` | `20` | Per IP |
+| `SSE_HEARTBEAT_SECONDS` | `5` | Keep-alive interval on the chat stream while the backend is busy |
+| `DISCOVERY_TOTAL_BUDGET_SECONDS` | `25` | Total time spent trying Overpass servers before falling back |
+| `API_PROXY_TIMEOUT_MS` (frontend build) | `600000` | Max time the frontend's `/api` relay waits for one answer |
 | `MAX_UPLOAD_MB` | `10` | Document size limit |
 | `AUTO_SEED_SAMPLE_DATA` | `true` | Load the fictional demo properties into an empty database |
 | `FRONTEND_PORT` / `BACKEND_PORT` | `3000` / `8000` | Host ports |

@@ -316,3 +316,21 @@ async def test_nominatim_fallback_parses_places():
     assert len(res) == 1 and res[0].osm_id == "node/55" and res[0].tags["amenity"] == "cafe"
     p = to_place_result(res[0], 28.5245, 77.2066, None)
     assert p.opening_hours == "Mo-Su 08:00-23:00" and p.address.startswith("Select Citywalk") and p.source == "osm"
+
+
+async def test_overpass_total_time_budget(monkeypatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "overpass_url", "")
+    monkeypatch.setattr(get_settings(), "overpass_urls", "https://a.example/x,https://b.example/x,https://c.example/x")
+    monkeypatch.setattr(get_settings(), "discovery_total_budget_seconds", 0.0)
+    hosts = []
+
+    def handler(request):
+        hosts.append(request.url.host)
+        return httpx.Response(504)
+
+    provider = OverpassProvider(httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    with pytest.raises(DiscoveryError, match="time budget"):
+        await provider.search(SearchSpec(latitude=1, longitude=2, radius_m=500, category=category_by_key("cafe")))
+    assert hosts == ["a.example"]  # stopped after the budget, didn't try the rest

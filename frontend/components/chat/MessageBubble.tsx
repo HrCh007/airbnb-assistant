@@ -58,7 +58,10 @@ export function MessageBubble({ message, onSuggestion }: { message: ChatMessage;
             </p>
           )}
           {message.pending && !message.content ? (
-            <TypingIndicator />
+            <span className="flex items-center gap-2">
+              <TypingIndicator />
+              {message.status && <span className="text-[13px] text-ink-muted" data-testid="assistant-status">{message.status}</span>}
+            </span>
           ) : (
             <div className="prose-chat" data-testid="assistant-text">
               {message.error && <AlertTriangle className="mr-1 mb-0.5 inline size-4" aria-hidden />}

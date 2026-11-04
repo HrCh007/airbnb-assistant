@@ -64,6 +64,8 @@ data: {"message_id": "…", "latency_ms": 2140, "intent": "LOCAL_DISCOVERY_QUERY
 
 Other events:
 - `session`: the guest switched property; carries the new session state.
+- `status`: short progress text ("Searching OpenStreetMap for cinema near your stay…", "Writing your answer…").
+- `: keep-alive` comment lines are sent every few seconds while the backend is busy; SSE clients ignore them.
 - `replace`: the full answer text, sent when a streamed LLM answer failed fact verification and was replaced by the checked (extractive) answer.
 - `error`: `{"message": "..."}` if the pipeline failed after the stream started.
 

@@ -152,6 +152,9 @@ export function useChat() {
               case "token":
                 patch((m) => ({ ...m, content: m.content + (data as string), pending: false }));
                 break;
+              case "status":
+                patch((m) => ({ ...m, status: data as string }));
+                break;
               case "replace":
                 // The streamed answer failed fact verification; show the checked version.
                 patch((m) => ({ ...m, content: data as string, pending: false }));

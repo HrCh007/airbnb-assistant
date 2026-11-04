@@ -90,6 +90,8 @@ class Settings(BaseSettings):
     # OSM usage policies require an identifying User-Agent with contact details.
     osm_user_agent: str = "HideoutStudiosGuestAssistant/1.0 (self-hosted; set OSM_USER_AGENT with your contact)"
     discovery_timeout_seconds: float = 12.0
+    # Total time allowed for trying Overpass servers before moving to the next fallback.
+    discovery_total_budget_seconds: float = 25.0
     discovery_cache_ttl_seconds: int = 3600
     # After a live failure, skip live calls for this long and use local datasets.
     discovery_failure_cooldown_seconds: int = 60
@@ -118,6 +120,8 @@ class Settings(BaseSettings):
     rate_limit_login_per_minute: int = 5
     max_upload_mb: int = 10
     max_message_chars: int = 1500
+    # Send an SSE keep-alive comment when nothing else was sent for this long.
+    sse_heartbeat_seconds: float = 5.0
 
     # --- Startup ----------------------------------------------------------------
     # Load the fictional sample properties/documents when the database is empty.

@@ -158,6 +158,7 @@ docker compose exec backend python -m scripts.build_osm_snapshot
 | `port is already allocated` | Set `FRONTEND_PORT=3001` / `BACKEND_PORT=8001` in `.env` |
 | `429 Too Many Requests` during build | Docker Hub download limit: wait a few minutes, or sign in to Docker Desktop |
 | Yellow notice "model is still downloading" stays | Check `docker compose logs ollama-pull`; retry with `docker compose run --rm ollama-pull` |
+| Chat says "Can't reach the assistant right now" after ~30 s | Fixed in this version (the frontend relay allowed only 30 s per answer). Rebuild the frontend: `docker compose up --build -d` |
 | Answers are very slow | Use a smaller model (`OLLAMA_MODEL=qwen3:0.6b`) or give Docker more memory/CPUs |
 | Ollama container restarts / out of memory | Smaller model, or more memory in `.wslconfig` |
 | Places say "Live map search didn't respond" (or show "Sample · fictional") | Run `docker compose exec backend python -m scripts.check_discovery` to see what each OpenStreetMap server returned. The dashboard also shows the last error. Public Overpass servers are sometimes busy: try again, add another server in `OVERPASS_URLS`, and build a snapshot (`python -m scripts.build_osm_snapshot`) while it works |

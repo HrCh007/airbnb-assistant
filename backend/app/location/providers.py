@@ -140,7 +140,11 @@ class OverpassProvider:
         async with self._lock:  # one request at a time (fair use)
             urls = s.overpass_endpoints
             live = [u for u in urls if time.monotonic() >= self._down_until.get(u, 0.0)] or urls
+            started = time.monotonic()
             for url in live:
+                if errors and time.monotonic() - started > s.discovery_total_budget_seconds:
+                    errors.append("time budget for Overpass servers used up")
+                    break
                 wait = 1.0 - (time.monotonic() - self._last_request.get(url, 0.0))
                 if wait > 0:
                     await asyncio.sleep(wait)
