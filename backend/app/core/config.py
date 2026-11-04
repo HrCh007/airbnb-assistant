@@ -1,14 +1,17 @@
 """Application settings, loaded from environment variables (and an optional .env file).
 
-Every external integration is configurable here. No secret has a default value.
+Zero-cost local architecture: no setting here requires an API key, a billing
+account or a paid service. Everything has a working default.
 """
 
 from __future__ import annotations
 
+import secrets
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,108 +22,129 @@ class Settings(BaseSettings):
 
     # --- General -----------------------------------------------------------
     environment: Literal["development", "test", "production"] = "development"
-    app_name: str = "Delhi Stays Guest Assistant"
+    app_name: str = "Hideout Studios Guest Assistant"
     log_level: str = "INFO"
     frontend_url: str = "http://localhost:3000"
-    backend_url: str = "http://localhost:8000"
-    # Extra comma-separated CORS origins (e.g. Vercel preview URLs).
     cors_extra_origins: str = ""
 
-    # --- Database ----------------------------------------------------------
-    database_url: str = "postgresql+asyncpg://airbnb:airbnb@localhost:5432/airbnb_assistant"
-    db_pool_size: int = 5
-    db_max_overflow: int = 5
+    # --- Storage (all local, persisted via Docker volumes) -----------------
+    # Root for the SQLite database, uploaded documents and the generated secret.
+    data_dir: str = "./.data"
+    database_url: str = ""  # default: sqlite+aiosqlite:///<data_dir>/app.db
+    # Bundled data (sample documents, discovery datasets) shipped in the repo/image.
+    bundled_data_dir: str = ""  # default: <repo>/data
 
-    # --- Security ----------------------------------------------------------
-    secret_key: str = Field(default="", description="JWT signing key. Required in production.")
+    # --- Vector store (ChromaDB) --------------------------------------------
+    # http: talk to the chromadb container; persistent: embedded on-disk store
+    # under <data_dir>/chroma (no container needed); memory: tests only.
+    chroma_mode: Literal["http", "persistent", "memory"] = "persistent"
+    chroma_host: str = "chromadb"
+    chroma_port: int = 8000
+
+    # --- Embeddings (local) ---------------------------------------------------
+    # sentence-transformers runs locally; "hash" is a tiny lexical fallback used
+    # by the automated tests and when the model can't be loaded.
+    embedding_provider: Literal["sentence-transformers", "hash"] = "sentence-transformers"
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_device: str = "cpu"
+
+    # --- Local LLM (Ollama) ---------------------------------------------------
+    llm_enabled: bool = True
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen3:1.7b"
+    ollama_timeout_seconds: float = 180.0
+    ollama_num_ctx: int = 4096
+    ollama_temperature: float = 0.3
+    ollama_keep_alive: str = "30m"
+    # Ask thinking-capable models (e.g. Qwen3) to answer directly - much faster on CPU.
+    ollama_disable_thinking: bool = True
+    # Use the LLM to classify messages the deterministic router is unsure about.
+    llm_routing: bool = True
+    # Check streamed answers against the retrieved facts; replace them if they
+    # contain facts (times, codes, numbers, place names) not found in the context.
+    verify_llm_answers: bool = True
+    history_messages_for_llm: int = 8
+    system_prompt_path: str = ""
+
+    # --- RAG ------------------------------------------------------------------
+    chunk_size: int = 900
+    chunk_overlap: int = 150
+    retrieval_top_k: int = 6
+    retrieval_candidate_k: int = 20
+    retrieval_min_vector_similarity: float = 0.15
+
+    # --- Local discovery (OpenStreetMap) --------------------------------------
+    # Live queries to the public Overpass API (free, no key; fair-use limits).
+    discovery_live: bool = True
+    overpass_url: str = "https://overpass-api.de/api/interpreter"
+    nominatim_url: str = "https://nominatim.openstreetmap.org"
+    # OSM usage policies require an identifying User-Agent with contact details.
+    osm_user_agent: str = "HideoutStudiosGuestAssistant/1.0 (self-hosted; set OSM_USER_AGENT with your contact)"
+    discovery_timeout_seconds: float = 20.0
+    discovery_cache_ttl_seconds: int = 3600
+    # After a live failure, skip live calls for this long and use local datasets.
+    discovery_failure_cooldown_seconds: int = 300
+    # Fictional sample places (clearly labelled) when no real data is available.
+    discovery_sample_data: bool = True
+    default_discovery_radius_m: int = 3000
+    allowed_radii_km: str = "1,3,5,10"
+    max_discovery_radius_m: int = 10000
+    places_results_to_show: int = 6
+
+    # Ranking weights (normalised).
+    rank_weight_relevance: float = 0.40
+    rank_weight_distance: float = 0.35
+    rank_weight_open: float = 0.10
+    rank_weight_preference: float = 0.10
+    rank_weight_completeness: float = 0.05
+
+    # --- Security -------------------------------------------------------------
+    secret_key: str = ""  # generated and persisted in <data_dir>/secret_key if empty
     admin_token_ttl_minutes: int = 12 * 60
+    admin_email: str = ""
+    admin_password: str = ""
     rate_limit_chat_per_minute: int = 20
     rate_limit_default_per_minute: int = 120
     rate_limit_login_per_minute: int = 5
     max_upload_mb: int = 10
     max_message_chars: int = 1500
 
-    # --- LLM (Anthropic Claude) -------------------------------------------
-    anthropic_api_key: str = ""
-    claude_model: str = "claude-opus-5-5"
-    # Model used for the fast query-planning / intent-routing call.
-    claude_planner_model: str = "claude-opus-5-5"
-    claude_answer_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
-    claude_planner_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
-    claude_max_tokens: int = 4000
-    claude_timeout_seconds: float = 60.0
-    claude_max_retries: int = 2
-    # Server-side refusal fallback (beta). Disable if your account/platform rejects it.
-    claude_enable_refusal_fallback: bool = True
-    history_messages_for_llm: int = 12
-    # Optional path to a custom system prompt file (defaults to app/prompts/system_prompt.md).
-    system_prompt_path: str = ""
+    # --- Startup ----------------------------------------------------------------
+    # Load the fictional sample properties/documents when the database is empty.
+    auto_seed_sample_data: bool = True
 
-    # --- Embeddings --------------------------------------------------------
-    # "openai" uses text-embedding-3-small; "local" is a deterministic hashing
-    # embedder for offline development and tests (lexical, not semantic).
-    embedding_provider: Literal["auto", "openai", "local"] = "auto"
-    openai_api_key: str = ""
-    openai_embedding_model: str = "text-embedding-3-small"
-    embedding_dim: int = 1536
-
-    # --- RAG ---------------------------------------------------------------
-    chunk_size: int = 900  # characters
-    chunk_overlap: int = 150
-    retrieval_top_k: int = 6
-    retrieval_candidate_k: int = 20
-    retrieval_min_vector_similarity: float = 0.15
-    hybrid_search: bool = True
-
-    # --- Local discovery (Google Places API New) ---------------------------
-    places_provider: Literal["auto", "google", "mock", "disabled"] = "auto"
-    google_maps_api_key: str = ""
-    places_timeout_seconds: float = 8.0
-    places_max_retries: int = 2
-    places_max_results: int = 12
-    places_results_to_show: int = 5
-    default_discovery_radius_m: int = 3000
-    max_discovery_radius_m: int = 25000
-    places_language: str = "en"
-    places_region: str = "in"
-    places_cache_ttl_seconds: int = 600
-
-    # Ranking weights (sum need not be 1; they are normalised).
-    rank_weight_relevance: float = 0.25
-    rank_weight_distance: float = 0.25
-    rank_weight_rating: float = 0.30
-    rank_weight_open: float = 0.10
-    rank_weight_preference: float = 0.10
-
-    # --- Admin bootstrap ---------------------------------------------------
-    admin_email: str = ""
-    admin_password: str = ""
-
-    # --- Optional Supabase (only used by docs / storage-free deployment) ----
-    supabase_url: str = ""
-    supabase_service_role_key: str = ""
-
-    @field_validator(
-        "anthropic_api_key", "openai_api_key", "google_maps_api_key", "secret_key",
-        "supabase_service_role_key", "admin_password", mode="before",
-    )
+    @field_validator("secret_key", "admin_password", "admin_email", mode="before")
     @classmethod
     def _ignore_comment_values(cls, v):
-        # Docker Compose passes "KEY=   # comment" through as the literal value
-        # "# comment"; treat that as unset rather than as a (bogus) credential.
+        # Docker Compose passes "KEY=   # comment" through as the value "# comment".
         if isinstance(v, str) and v.strip().startswith("#"):
             return ""
         return v.strip() if isinstance(v, str) else v
 
-    @field_validator("database_url")
-    @classmethod
-    def _normalise_db_url(cls, v: str) -> str:
-        # Accept plain postgres:// URLs from providers (Supabase/Render/Railway).
-        if v.startswith("postgres://"):
-            v = "postgresql://" + v[len("postgres://") :]
-        if v.startswith("postgresql://"):
-            v = "postgresql+asyncpg://" + v[len("postgresql://") :]
-        return v
+    # ----------------------------------------------------------------- derived
+    @property
+    def data_path(self) -> Path:
+        p = Path(self.data_dir).expanduser().resolve()
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    @property
+    def uploads_path(self) -> Path:
+        p = self.data_path / "uploads"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    @property
+    def bundled_path(self) -> Path:
+        if self.bundled_data_dir:
+            return Path(self.bundled_data_dir).resolve()
+        return Path(__file__).resolve().parents[3] / "data"
+
+    @property
+    def resolved_database_url(self) -> str:
+        if self.database_url:
+            return self.database_url
+        return f"sqlite+aiosqlite:///{self.data_path / 'app.db'}"
 
     @property
     def cors_origins(self) -> list[str]:
@@ -129,29 +153,24 @@ class Settings(BaseSettings):
         return origins
 
     @property
-    def llm_enabled(self) -> bool:
-        return bool(self.anthropic_api_key)
+    def radii_km(self) -> list[int]:
+        return [int(x) for x in self.allowed_radii_km.split(",") if x.strip()]
 
-    @property
-    def resolved_embedding_provider(self) -> str:
-        if self.embedding_provider == "auto":
-            return "openai" if self.openai_api_key else "local"
-        return self.embedding_provider
-
-    @property
-    def resolved_places_provider(self) -> str:
-        if self.places_provider == "auto":
-            return "google" if self.google_maps_api_key else "disabled"
-        return self.places_provider
-
-    def validate_for_production(self) -> list[str]:
-        problems: list[str] = []
-        if self.environment == "production":
-            if len(self.secret_key) < 32:
-                problems.append("SECRET_KEY must be set to at least 32 random characters.")
-            if self.resolved_places_provider == "mock":
-                problems.append("PLACES_PROVIDER=mock is not allowed in production.")
-        return problems
+    def resolved_secret_key(self) -> str:
+        """SECRET_KEY, or a random key generated once and kept in the data volume
+        (so admin logins survive restarts without any manual setup)."""
+        if self.secret_key:
+            return self.secret_key
+        path = self.data_path / "secret_key"
+        if path.exists():
+            return path.read_text().strip()
+        key = secrets.token_urlsafe(48)
+        path.write_text(key)
+        try:
+            path.chmod(0o600)
+        except OSError:  # pragma: no cover - e.g. Windows bind mounts
+            pass
+        return key
 
 
 @lru_cache

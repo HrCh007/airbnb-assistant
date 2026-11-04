@@ -34,26 +34,32 @@ export interface PropertySummary {
   is_placeholder: boolean;
 }
 
+export type PlaceSource = "osm" | "osm_snapshot" | "host_curated" | "sample";
+
 export interface Place {
-  place_id?: string | null;
+  osm_id?: string | null;
   name: string;
   category?: string | null;
+  cuisine?: string | null;
   types: string[];
   address?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   distance_km?: number | null;
-  rating?: number | null;
-  user_rating_count?: number | null;
-  price_level?: number | null;
+  opening_hours?: string | null;
   open_now?: boolean | null;
-  opening_hours: string[];
+  open_late?: boolean | null;
+  price_level?: number | null;
+  price_note?: string | null;
+  diet?: string | null;
   phone?: string | null;
   website?: string | null;
+  rating?: number | null;
   summary?: string | null;
   maps_url?: string | null;
   directions_url?: string | null;
-  source: "google_places" | "host_curated" | "mock";
+  osm_url?: string | null;
+  source: PlaceSource;
   host_note?: string | null;
   score?: number | null;
 }
@@ -83,12 +89,18 @@ export interface ChatMessage {
   created_at?: string;
 }
 
-export interface ServiceStatus {
-  llm: "claude" | "offline";
-  llm_model?: string | null;
-  embeddings: string;
-  places: "google_places" | "mock" | "disabled";
+export interface RuntimeStatus {
+  llm: { provider: string; model: string; state: "ready" | "model_not_downloaded" | "unreachable" | "disabled"; installed_models: string[] };
+  embeddings: { provider: string; dimensions: number };
+  vector_store: { provider: string; reachable: boolean };
+  database: string;
+  discovery: { live_osm: boolean; osm_snapshot: boolean; sample_data: boolean };
+  paid_apis: string;
+}
+
+export interface ServiceStatus extends RuntimeStatus {
   quick_actions: Record<string, string>;
+  radii_km: number[];
 }
 
 // ---------------------------------------------------------------- admin
@@ -136,7 +148,8 @@ export interface Curated {
   address?: string | null;
   latitude?: number | null;
   longitude?: number | null;
-  google_place_id?: string | null;
+  osm_id?: string | null;
+  price_level?: number | null;
   tags: string[];
   is_active: boolean;
   created_at: string;
@@ -154,5 +167,5 @@ export interface Dashboard {
   conversations_7d: number;
   messages_7d: number;
   intents_7d: Record<string, number>;
-  integrations: { llm: string; embeddings: string; places: string };
+  integrations: RuntimeStatus;
 }

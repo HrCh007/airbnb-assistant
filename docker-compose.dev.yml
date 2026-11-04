@@ -1,0 +1,15 @@
+# Development override: hot reload + direct access to Ollama and ChromaDB.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+services:
+  ollama:
+    ports: ["127.0.0.1:11434:11434"]
+  chromadb:
+    ports: ["127.0.0.1:8001:8000"]
+  backend:
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      ENVIRONMENT: development
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/scripts:/app/scripts

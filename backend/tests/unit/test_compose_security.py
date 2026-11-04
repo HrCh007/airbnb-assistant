@@ -102,13 +102,15 @@ def test_log_redaction():
     assert "abcdefghijklmnop" not in rec.getMessage() and "hunter2" not in rec.getMessage()
 
 
-def test_comment_text_from_env_file_is_not_treated_as_a_key(monkeypatch):
+def test_comment_text_from_env_file_is_not_treated_as_a_value(monkeypatch, tmp_path):
     from app.core.config import Settings
 
-    monkeypatch.setenv("OPENAI_API_KEY", "# https://platform.openai.com/api-keys")
-    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "   # comment")
-    monkeypatch.setenv("EMBEDDING_PROVIDER", "auto")
-    monkeypatch.setenv("PLACES_PROVIDER", "auto")
+    monkeypatch.setenv("SECRET_KEY", "# generate with: openssl rand -hex 32")
+    monkeypatch.setenv("ADMIN_PASSWORD", "   # set a strong password")
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
     s = Settings()
-    assert s.openai_api_key == "" and s.resolved_embedding_provider == "local"
-    assert s.google_maps_api_key == "" and s.resolved_places_provider == "disabled"
+    assert s.secret_key == "" and s.admin_password == ""
+    # Empty SECRET_KEY -> a random key is generated once and persisted in the data dir.
+    k1 = s.resolved_secret_key()
+    assert len(k1) > 40 and (tmp_path / "secret_key").read_text() == k1
+    assert Settings().resolved_secret_key() == k1

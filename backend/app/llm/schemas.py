@@ -20,11 +20,12 @@ class PlacesPlan(BaseModel):
     action: Literal["search", "refine_previous", "filter_previous"]
     query: str
     category_key: str | None = None
-    included_type: str | None = None
+    # Specific term the category catalogue doesn't cover ("tibetan", "biryani", a name).
+    keyword: str | None = None
     radius_m: int | None = None
     open_now: bool | None = None
-    max_price_level: int | None = None
-    min_rating: float | None = None
+    late_night: bool = False
+    budget: Literal["budget", "moderate", "premium"] | None = None
     rank_by_distance: bool = False
 
 
@@ -45,7 +46,9 @@ class QueryPlan(BaseModel):
     clarification_question: str | None = None
     switch_location: str | None = None
     language: Literal["english", "hinglish"] = "english"
-    planner: str = "heuristic"  # set by the backend: "llm" or "heuristic"
+    planner: str = "heuristic"  # "heuristic" or "llm"
+    # False when the deterministic router had to fall back to a default guess.
+    confident: bool = True
 
     @property
     def needs_property_rag(self) -> bool:

@@ -16,8 +16,7 @@ from app.core.config import get_settings
 from app.core.database import get_db, get_sessionmaker
 from app.core.rate_limit import rate_limit
 from app.location.categories import QUICK_ACTION_QUERIES
-from app.location.discovery import DiscoveryRequest, discover, place_details
-from app.location.providers import get_places_provider
+from app.location.discovery import DiscoveryRequest, discover
 from app.models import Message
 from app.schemas.common import (
     ChatMessageIn,
@@ -26,6 +25,7 @@ from app.schemas.common import (
     PlaceResult,
     PlacesSearchRequest,
     PlacesSearchResponse,
+    PreferencesIn,
     SessionCreate,
     SessionOut,
     SessionSelect,
@@ -34,21 +34,16 @@ from app.schemas.property import LocationOut, PropertySummary
 from app.services import sessions as session_svc
 from app.services.orchestrator import handle_message
 from app.services.properties import get_property, list_locations, list_properties, to_summary
+from app.services.runtime import runtime_status
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", dependencies=[Depends(rate_limit("api", "rate_limit_default_per_minute"))])
 
 
-@router.get("/status", tags=["meta"], summary="Feature availability for the frontend")
+@router.get("/status", tags=["meta"], summary="Which local components are available")
 async def status() -> dict:
     s = get_settings()
-    return {
-        "llm": "claude" if s.llm_enabled else "offline",
-        "llm_model": s.claude_model if s.llm_enabled else None,
-        "embeddings": s.resolved_embedding_provider,
-        "places": get_places_provider().name,
-        "quick_actions": QUICK_ACTION_QUERIES,
-    }
+    return {**await runtime_status(), "quick_actions": QUICK_ACTION_QUERIES, "radii_km": s.radii_km}
 
 
 # --------------------------------------------------------------------------- properties
@@ -98,6 +93,20 @@ async def update_selection(
     else:
         raise HTTPException(422, "Provide location_slug or property_id.")
     await db.refresh(conv)
+    return await session_svc.session_view(db, conv)
+
+
+@router.put("/chat/sessions/{session_id}/preferences", response_model=SessionOut, tags=["chat"],
+            summary="Set guest preferences, e.g. the search radius (1/3/5/10 km)")
+async def update_preferences(
+    session_id: uuid.UUID, body: PreferencesIn,
+    token: str | None = Depends(session_token), db: AsyncSession = Depends(get_db),
+):
+    conv = await session_svc.load_session(db, session_id, token)
+    prefs = await session_svc.get_preferences(db, conv)
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(prefs, field, value)
+    await db.commit()
     return await session_svc.session_view(db, conv)
 
 
@@ -181,25 +190,11 @@ async def chat_message(body: ChatMessageIn, token: str | None = Depends(session_
              dependencies=[Depends(rate_limit("places", "rate_limit_chat_per_minute"))])
 async def places_search(body: PlacesSearchRequest, db: AsyncSession = Depends(get_db)):
     prop = await get_property(db, body.property_id)
-    result = await discover(
-        db, prop,
-        DiscoveryRequest(
-            query=body.query, included_type=body.included_type, radius_m=body.radius_m,
-            open_now=body.open_now, max_price_level=body.max_price_level, min_rating=body.min_rating,
-            limit=body.limit,
-        ),
-    )
+    result = await discover(db, prop, DiscoveryRequest(
+        query=body.query, category_key=body.category_key, radius_m=body.radius_m,
+        open_now=body.open_now, limit=body.limit,
+    ))
     return PlacesSearchResponse(
         provider=result.provider, origin=result.origin, radius_m=result.radius_m,
-        results=result.results, notice=result.notice,
+        results=result.results, notice=result.notice, attribution=result.attribution,
     )
-
-
-@router.get("/places/details/{place_id}", response_model=PlaceResult, tags=["places"])
-async def places_details(place_id: str):
-    if len(place_id) > 255:
-        raise HTTPException(422, "Invalid place id")
-    place = await place_details(place_id)
-    if place is None:
-        raise HTTPException(404, "Place details unavailable.")
-    return place

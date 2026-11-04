@@ -31,7 +31,7 @@ export default function LoginPage() {
           }
         }}
       >
-        <span className="flex size-11 items-center justify-center rounded-2xl bg-ink font-display text-lg font-semibold text-paper">DS</span>
+        <span className="flex size-11 items-center justify-center rounded-2xl bg-ink font-display text-lg font-semibold text-paper">HS</span>
         <h1 className="mt-4 font-display text-2xl font-semibold">Host Console</h1>
         <p className="mt-1 text-sm text-ink-soft">Manage properties, knowledge and local picks.</p>
         <label className="mt-6 block text-xs font-medium text-ink-soft" htmlFor="email">Email</label>

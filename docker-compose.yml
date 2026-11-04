@@ -1,53 +1,103 @@
-# Local development stack: PostgreSQL + pgvector, FastAPI backend, Next.js frontend.
-#   cp .env.example .env    # add API keys if you have them
-#   docker compose up --build
-#   docker compose exec backend python -m scripts.seed
+# Hideout Studios Guest Assistant - zero-cost local stack.
+#
+#   docker compose up --build -d          # first start also downloads the LLM (ollama-pull)
+#   open http://localhost:3000             # guest chat;  /admin for the host console
+#
+# Services: frontend (Next.js) -> backend (FastAPI) -> chromadb (vectors) + ollama (LLM).
+# Only the frontend (3000) and, on localhost only, the backend API (8000) are published.
+name: hideout-assistant
+
 services:
-  db:
-    image: pgvector/pgvector:pg16
+  ollama:
+    image: ollama/ollama:0.40.14
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: airbnb
-      POSTGRES_PASSWORD: airbnb
-      POSTGRES_DB: airbnb_assistant
-    ports:
-      - "${DB_PORT:-5432}:5432"
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m}
+      OLLAMA_NUM_PARALLEL: "1"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ollama_models:/root/.ollama
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U airbnb -d airbnb_assistant"]
-      interval: 3s
-      timeout: 3s
-      retries: 20
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks: [internal]
+
+  # One-shot: downloads OLLAMA_MODEL into the ollama_models volume (skipped if present).
+  ollama-pull:
+    image: ollama/ollama:0.40.14
+    restart: "no"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["ollama pull ${OLLAMA_MODEL:-qwen3:1.7b} || echo 'Model download failed (offline?). The app works in extractive mode until it succeeds: docker compose run --rm ollama-pull'"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks: [internal]
+
+  chromadb:
+    image: chromadb/chroma:1.5.9
+    restart: unless-stopped
+    environment:
+      ANONYMIZED_TELEMETRY: "FALSE"
+    volumes:
+      - chroma_data:/data
+    healthcheck:
+      # The image has bash but no curl: talk HTTP over /dev/tcp.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8000 && printf 'GET /api/v2/heartbeat HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '200 OK' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks: [internal]
 
   backend:
     build:
-      context: ./backend
-    volumes:
-      # Fictional sample documents used by `python -m scripts.seed` (dev only).
-      - ./data/sample_documents:/data/sample_documents:ro
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
     env_file:
       - path: .env
         required: false
     environment:
-      DATABASE_URL: postgresql://airbnb:airbnb@db:5432/airbnb_assistant
-      FRONTEND_URL: http://localhost:3000
-      # Without a Google key, show clearly-labelled mock places in local dev.
-      PLACES_PROVIDER: ${PLACES_PROVIDER:-auto}
+      DATA_DIR: /data
+      CHROMA_MODE: http
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: "8000"
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:1.7b}
+      FRONTEND_URL: http://localhost:${FRONTEND_PORT:-3000}
+    volumes:
+      - app_data:/data   # SQLite database, uploaded documents, OSM snapshot, generated secret key
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"   # API docs at http://localhost:8000/docs
     depends_on:
-      db:
+      chromadb:
         condition: service_healthy
+      ollama:
+        condition: service_healthy
+    networks: [internal, web]
 
   frontend:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000
+        BACKEND_INTERNAL_URL: http://backend:8000
+    restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    networks: [web]
+
+networks:
+  internal: {}   # backend <-> chromadb / ollama (not reachable from the frontend)
+  web: {}        # frontend <-> backend
 
 volumes:
-  pgdata:
+  ollama_models: {}
+  chroma_data: {}
+  app_data: {}

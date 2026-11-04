@@ -38,7 +38,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-20 border-b border-sand-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
           <Link href="/admin" className="flex items-center gap-2">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-ink font-display font-semibold text-paper">DS</span>
+            <span className="flex size-9 items-center justify-center rounded-xl bg-ink font-display font-semibold text-paper">HS</span>
             <span className="hidden font-display text-lg font-semibold sm:inline">Host Console</span>
           </Link>
           <nav className="flex flex-1 gap-1 overflow-x-auto">

@@ -83,3 +83,22 @@ test("clear conversation", async ({ page }) => {
   await page.getByRole("button", { name: "Clear conversation" }).click();
   await expect(page.getByTestId("assistant-message")).toHaveCount(0);
 });
+
+test("radius chips, data-source badges and limited-mode notice", async ({ page }) => {
+  await page.getByTestId("location-saket").click();
+  await expect(page.getByTestId("property-ready")).toBeVisible();
+  // Without a downloaded model / live map data the guest is told plainly.
+  await expect(page.getByTestId("limited-mode")).toBeVisible();
+  const oneKm = page.getByRole("radio", { name: "1 km" });
+  await oneKm.click();
+  await expect(oneKm).toHaveAttribute("aria-checked", "true");
+  const msg = await ask(page, "Any cafes nearby?");
+  const cards = msg.getByTestId("place-card");
+  await expect(cards.first()).toBeVisible();
+  // Every card states where its data came from; nothing beyond the chosen radius.
+  await expect(cards.first()).toContainText(/OpenStreetMap|Saved map data|Sample · fictional|Host pick/);
+  for (const text of await cards.allInnerTexts()) {
+    const m = text.match(/([\d.]+) (km|m) away/);
+    if (m) expect(m[2] === "m" ? Number(m[1]) / 1000 : Number(m[1])).toBeLessThanOrEqual(1);
+  }
+});

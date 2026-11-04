@@ -39,5 +39,5 @@ def configure_logging(level: str = "INFO") -> None:
     root.handlers[:] = [handler]
     root.setLevel(level.upper())
     # Keep noisy libraries quiet; never log request bodies.
-    for noisy in ("httpx", "httpx2", "httpcore", "anthropic", "openai", "sqlalchemy.engine"):
+    for noisy in ("httpx", "httpcore", "chromadb", "sentence_transformers", "urllib3", "sqlalchemy.engine"):
         logging.getLogger(noisy).setLevel(logging.WARNING)

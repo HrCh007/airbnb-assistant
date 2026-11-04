@@ -9,7 +9,9 @@ import type {
   Session,
 } from "@/types";
 
-export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
+// Empty = same origin (Next.js proxies /api to the backend). Set NEXT_PUBLIC_API_URL
+// only to call a backend on another origin directly.
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -52,6 +54,8 @@ export const guestApi = {
     request<Session>(`/api/chat/sessions/${id}`, { headers: { "X-Session-Token": token } }),
   select: (id: string, token: string, body: { location_slug?: string; property_id?: string }) =>
     request<Session>(`/api/chat/sessions/${id}/selection`, { method: "PUT", ...json(body, { "X-Session-Token": token }) }),
+  setPreferences: (id: string, token: string, body: { max_distance_km?: number | null }) =>
+    request<Session>(`/api/chat/sessions/${id}/preferences`, { method: "PUT", ...json(body, { "X-Session-Token": token }) }),
   verifyPin: (id: string, token: string, pin: string) =>
     request<{ verified: boolean }>(`/api/chat/sessions/${id}/verify-pin`, { method: "POST", ...json({ pin }, { "X-Session-Token": token }) }),
   messages: (id: string, token: string) =>
@@ -125,7 +129,7 @@ export async function streamChat(sessionId: string, token: string, message: stri
 }
 
 // ------------------------------------------------------------------ admin API
-const TOKEN_KEY = "dsa_admin_token";
+const TOKEN_KEY = "hs_admin_token";
 
 export const adminAuth = {
   get: () => (typeof window === "undefined" ? null : window.localStorage.getItem(TOKEN_KEY)),
@@ -181,6 +185,10 @@ export const adminApi = {
   chunks: (id: string) =>
     adminRequest<{ id: string; index: number; section?: string; content: string; is_sensitive: boolean }[]>(
       `/api/admin/documents/${id}/chunks`,
+    ),
+  geocode: (q: string) =>
+    adminRequest<{ results: { display_name: string; latitude: number; longitude: number }[]; attribution: string }>(
+      `/api/admin/geocode?q=${encodeURIComponent(q)}`,
     ),
   curated: (propertyId: string) => adminRequest<Curated[]>(`/api/admin/curated?property_id=${propertyId}`),
   createCurated: (body: unknown) => adminRequest<Curated>("/api/admin/curated", { method: "POST", ...json(body) }),

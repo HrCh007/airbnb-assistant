@@ -1,8 +1,8 @@
-"""Deterministic keyword planner.
+"""Deterministic query router (intent + search plan + preferences).
 
-Used when no ANTHROPIC_API_KEY is configured, when the Claude planner call
-fails, and as a cheap safety net (e.g. emergency detection always runs).
-Understands common English and Hinglish phrasings.
+Handles most messages without an LLM call (important on CPU-only machines),
+understands common English and Hinglish phrasings, and flags low-confidence
+cases so the local LLM router can take a second look.
 """
 
 from __future__ import annotations
@@ -72,13 +72,19 @@ _FILTER_PREV = re.compile(
     re.I,
 )
 _REFINE = re.compile(r"\b(something|anything|any|show|more|other|another|else|different)\b", re.I)
-_RADIUS = re.compile(r"within\s+(\d+(?:\.\d+)?)\s*(km|kms|kilomet(er|re)s?|m|meters?|metres?)\b", re.I)
+_LATE = re.compile(r"\b(late night|late-night|after midnight|midnight|open late|24 ?(hours|hrs|x ?7|/7))\b", re.I)
+_RADIUS = re.compile(r"(?:within|in|under|upto|up to)\s+(\d+(?:\.\d+)?)\s*(km|kms|kilomet(?:er|re)s?|m|meters?|metres?)\b|\b(\d+(?:\.\d+)?)\s*(km|kms)\s*(?:radius|range|away|ke andar)\b", re.I)
 _SWITCH = re.compile(
     r"\b(switch|change|move|moved|actually|now) (to |i'?m |staying |in |at )*(?:the )?(dwarka|janakpuri|saket)\b"
     r"|\b(i'?m|we'?re|i am|we are) (actually |now )?(staying )?(in|at) (?:the )?(dwarka|janakpuri|saket)\b",
     re.I,
 )
 _LOCATION_NAMES = ("dwarka", "janakpuri", "saket")
+_AMENITY_Q = re.compile(
+    r"^\s*(is there|are there|do you have|do we have|have you got|does (it|the (flat|apartment|property|place|room|house|stay)) have|"
+    r"is (a|an|the) .{1,30} (available|provided|included))\b",
+    re.I,
+)
 _IN_PROPERTY = re.compile(
     r"\b(in|at|inside) (the|this|our|my) (building|property|flat|apartment|society|complex|premises|house|villa|stay)\b",
     re.I,
@@ -114,9 +120,32 @@ def _preferences(text: str) -> PreferenceUpdates:
         p.travel_mode = "metro"
     m = _RADIUS.search(t)
     if m:
-        val = float(m.group(1))
-        p.max_distance_km = val if m.group(2).lower().startswith("k") else val / 1000
+        num, unit = (m.group(1), m.group(2)) if m.group(1) else (m.group(3), m.group(4))
+        val = float(num)
+        p.max_distance_km = val if unit.lower().startswith("k") else val / 1000
     return p
+
+
+_GENERIC_CATEGORIES = {"restaurant", "attraction", "entertainment", "budget_food", "family_restaurant"}
+_NON_KEYWORDS = {
+    "near", "nearby", "good", "best", "nice", "some", "place", "places", "suggest", "recommend", "where", "find",
+    "food", "dinner", "lunch", "breakfast", "eat", "restaurant", "restaurants", "around", "here", "there", "want",
+    "looking", "please", "can", "get", "any", "great", "options", "spot", "spots", "tonight", "today", "tomorrow",
+    "kahan", "batao", "koi", "achhi", "jagah", "bhai", "yaar", "with", "for", "what", "about", "also", "really",
+    "something", "anything", "cheap", "cheaper", "budget", "family", "friendly", "parents", "kids", "within",
+    "radius", "walking", "distance", "open", "late", "night", "now", "the", "and", "our", "stay", "property",
+    "khana", "khaana", "liye", "ke", "interesting", "things", "do", "visit", "go", "local", "authentic",
+}
+
+
+def _extract_keyword(lower: str, category) -> str | None:
+    """Specific words worth searching OSM names/cuisines for, when the matched
+    category is generic or missing (e.g. "tibetan food nearby" -> "tibetan")."""
+    if category is not None and category.key not in _GENERIC_CATEGORIES:
+        return None
+    kws = {k for c in [category] if c for k in c.keywords}
+    words = [w for w in re.findall(r"[a-z]{4,}", lower) if w not in _NON_KEYWORDS and w not in kws]
+    return " ".join(words[:2]) or None
 
 
 def heuristic_plan(message: str, last_places_plan: dict | None = None, has_previous_places: bool = False) -> QueryPlan:
@@ -139,7 +168,7 @@ def heuristic_plan(message: str, last_places_plan: dict | None = None, has_previ
         return QueryPlan(
             intent="EMERGENCY_QUERY",
             property_question="emergency contacts host contact nearby hospital emergency numbers",
-            places=PlacesPlan(action="search", query="hospital emergency", category_key="hospital", included_type="hospital", rank_by_distance=True, radius_m=radius_m),
+            places=PlacesPlan(action="search", query="hospital", category_key="hospital", rank_by_distance=True, radius_m=radius_m),
             language=language,
             preference_updates=prefs,
         )
@@ -153,6 +182,10 @@ def heuristic_plan(message: str, last_places_plan: dict | None = None, has_previ
     is_local = strong_local or ((bool(category) or weak_local) and not is_property)
     if is_property and category and not strong_local:
         category = None
+    # "Is there a pool?", "Do you have a hair dryer?", "Does the flat have a balcony?":
+    # amenity questions about the stay unless they say "nearby"/"around".
+    if _AMENITY_Q.search(lower) and not strong_local and not weak_local:
+        is_property, is_local, category = True, False, None
     # "Is there a gym in the building?" is about the property, not the neighbourhood.
     if _IN_PROPERTY.search(lower) and not strong_local:
         is_property, is_local, category = True, False, None
@@ -178,43 +211,44 @@ def heuristic_plan(message: str, last_places_plan: dict | None = None, has_previ
         prev = PlacesPlan.model_validate(last_places_plan)
         plan = prev.model_copy(update={"action": "refine_previous"})
         if _CHEAPER.search(lower):
-            plan.max_price_level = 1 if (prev.max_price_level or 3) > 1 else 2
-            plan.min_rating = None
+            plan.budget = "budget"
             plan.query = re.sub(r"\b(fine dining|fancy|upscale|premium)\b\s*", "", prev.query).strip() or prev.query
             if "budget" not in plan.query:
                 plan.query = f"budget {plan.query}"
-            if plan.included_type == "fine_dining_restaurant":
-                plan.included_type = "restaurant"
+            if plan.category_key == "fine_dining":
+                plan.category_key = "restaurant"
         if _PREMIUM.search(lower):
-            plan.max_price_level = None
-            plan.min_rating = 4.2
+            plan.budget = "premium"
         if _CLOSER.search(lower):
             plan.rank_by_distance = True
-            plan.radius_m = min(prev.radius_m or 3000, 1500)
+            plan.radius_m = min(prev.radius_m or 3000, 1000)
         if _OPEN.search(lower):
             plan.open_now = True
+            plan.late_night = bool(_LATE.search(lower))
         return QueryPlan(intent="LOCAL_DISCOVERY_QUERY", places=plan, language=language, preference_updates=prefs)
 
     places = None
+    confident = True
     if is_local:
         cat = category or category_by_key("restaurant")
-        query = cat.query
+        query = cat.label
         if prefs.budget == "budget":
             query = f"budget {query}"
         if prefs.dietary in {"vegetarian", "vegan", "jain"} and cat.group == "food":
             query = f"{prefs.dietary} {query}"
         if prefs.companions == "family" and cat.group == "food":
             query = f"family friendly {query}"
+        late = bool(_LATE.search(lower)) or cat.key == "late_night_food"
         places = PlacesPlan(
             action="search",
             query=query,
             category_key=cat.key,
-            included_type=cat.included_type,
+            keyword=_extract_keyword(lower, category),
             radius_m=radius_m,
-            open_now=True if _OPEN.search(lower) else None,
-            max_price_level=1 if prefs.budget == "budget" else None,
-            min_rating=4.2 if prefs.budget == "premium" else None,
-            rank_by_distance=cat.group == "essentials" or "nearest" in lower or "closest" in lower,
+            open_now=True if re.search(r"\bopen now\b|\bright now\b", lower) else None,
+            late_night=late,
+            budget=prefs.budget,
+            rank_by_distance=cat.rank_by_distance or "nearest" in lower or "closest" in lower,
         )
 
     if is_property and places:
@@ -226,8 +260,10 @@ def heuristic_plan(message: str, last_places_plan: dict | None = None, has_previ
     elif _NEIGHBOURHOOD.search(lower):
         intent = "GENERAL_NEIGHBOURHOOD_QUERY"
     else:
-        # Unknown: treat as a property question first (knowledge base is the safest source).
+        # Unknown: treat as a property question first (knowledge base is the safest source),
+        # and flag it so the local LLM router may take a second look.
         intent = "PROPERTY_QUERY"
+        confident = False
 
     property_question = None
     if intent in {"PROPERTY_QUERY", "GENERAL_NEIGHBOURHOOD_QUERY"}:
@@ -239,6 +275,7 @@ def heuristic_plan(message: str, last_places_plan: dict | None = None, has_previ
 
     return QueryPlan(
         intent=intent,
+        confident=confident,
         property_question=property_question,
         places=places,
         language=language,

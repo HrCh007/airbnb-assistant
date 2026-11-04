@@ -34,8 +34,12 @@ export function DashboardView() {
   if (data.placeholder_properties) warnings.push(`${data.placeholder_properties} propert${data.placeholder_properties === 1 ? "y uses" : "ies use"} placeholder data — replace it with real details.`);
   if (data.missing_coordinates) warnings.push(`${data.missing_coordinates} propert${data.missing_coordinates === 1 ? "y is" : "ies are"} missing coordinates, so local search can't run for them.`);
   if (data.documents_by_status.failed) warnings.push(`${data.documents_by_status.failed} document(s) failed to process.`);
-  if (data.integrations.llm.startsWith("offline")) warnings.push("Claude is not configured (ANTHROPIC_API_KEY): the assistant runs in offline extractive mode.");
-  if (data.integrations.places !== "google") warnings.push(`Local discovery provider is "${data.integrations.places}". Set GOOGLE_MAPS_API_KEY for live Google Places results.`);
+  const it = data.integrations;
+  if (it.llm.state === "model_not_downloaded") warnings.push(`The local model ${it.llm.model} isn't downloaded yet: run "docker compose exec ollama ollama pull ${it.llm.model}". Until then answers quote documents directly.`);
+  if (it.llm.state === "unreachable") warnings.push("Ollama isn't reachable, so answers quote documents directly. Check the ollama container.");
+  if (!it.vector_store.reachable) warnings.push("ChromaDB isn't reachable: property questions can't be answered. Check the chromadb container.");
+  if (it.embeddings.provider === "local-hash") warnings.push("The sentence-transformers model couldn't be loaded; search uses the basic keyword fallback.");
+  if (!it.discovery.live_osm && !it.discovery.osm_snapshot) warnings.push(it.discovery.sample_data ? "Nearby places use the FICTIONAL sample dataset. Enable DISCOVERY_LIVE or build an OSM snapshot." : "No map data source is enabled for nearby places.");
 
   return (
     <>
@@ -84,9 +88,16 @@ export function DashboardView() {
         <div className={card}>
           <h2 className="font-display text-lg font-semibold">Integrations</h2>
           <dl className="mt-3 space-y-2 text-sm">
-            {Object.entries(data.integrations).map(([k, v]) => (
+            {[
+              ["Local LLM", `${it.llm.model} · ${it.llm.state.replace(/_/g, " ")}`],
+              ["Embeddings", `${it.embeddings.provider} (${it.embeddings.dimensions}-d)`],
+              ["Vector store", `${it.vector_store.provider} · ${it.vector_store.reachable ? "ok" : "unreachable"}`],
+              ["Database", it.database],
+              ["Map data", [it.discovery.live_osm && "live OpenStreetMap", it.discovery.osm_snapshot && "OSM snapshot", it.discovery.sample_data && "sample (fictional)"].filter(Boolean).join(" → ") || "none"],
+              ["Paid APIs", it.paid_apis],
+            ].map(([k, v]) => (
               <div key={k} className="flex justify-between gap-4">
-                <dt className="text-ink-soft">{({ llm: "LLM", embeddings: "Embeddings", places: "Places" } as Record<string, string>)[k] ?? k}</dt>
+                <dt className="text-ink-soft">{k}</dt>
                 <dd className="text-right font-medium">{v}</dd>
               </div>
             ))}

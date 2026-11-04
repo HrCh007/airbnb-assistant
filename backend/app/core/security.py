@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import secrets
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
@@ -11,14 +10,11 @@ import jwt
 from app.core.config import get_settings
 
 _ALGORITHM = "HS256"
-_dev_fallback_key = secrets.token_urlsafe(48)
 
 
 def _signing_key() -> str:
-    key = get_settings().secret_key
-    # In development without SECRET_KEY we use a per-process random key
-    # (tokens are invalidated on restart). Production refuses to start without one.
-    return key or _dev_fallback_key
+    # SECRET_KEY, or a random key generated once and persisted in the data volume.
+    return get_settings().resolved_secret_key()
 
 
 def hash_password(password: str) -> str:

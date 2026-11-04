@@ -51,7 +51,7 @@ def test_property_queries_do_not_trigger_places():
 
 def test_emergency_plans_nearest_hospital_by_distance():
     plan = heuristic_plan("What's the nearest hospital?")
-    assert plan.places and plan.places.included_type == "hospital" and plan.places.rank_by_distance
+    assert plan.places and plan.places.category_key == "hospital" and plan.places.rank_by_distance
 
 
 def test_essentials_rank_by_distance():
@@ -59,9 +59,15 @@ def test_essentials_rank_by_distance():
     assert plan.places.category_key == "pharmacy" and plan.places.rank_by_distance
 
 
-def test_late_night_sets_open_now():
+def test_late_night_requests_late_places():
     plan = heuristic_plan("Are there any places open after midnight?")
-    assert plan.places.open_now is True
+    assert plan.places.late_night is True
+
+
+@pytest.mark.parametrize("q,km", [("cafes within 1 km", 1), ("things to do in 5 km radius", 5), ("restaurants within 10 km", 10), ("cafes 3km away", 3)])
+def test_radius_phrases(q, km):
+    plan = heuristic_plan(q)
+    assert plan.places.radius_m == km * 1000
 
 
 def test_radius_from_message():
@@ -80,15 +86,15 @@ def test_refine_previous_cheaper_keeps_query_and_lowers_price():
     plan = heuristic_plan("Anything more budget-friendly?", first.places.model_dump(), True)
     assert plan.intent == "LOCAL_DISCOVERY_QUERY"
     assert plan.places.action == "refine_previous"
-    assert plan.places.max_price_level == 1
-    assert "restaurant" in plan.places.query
+    assert plan.places.budget == "budget"
+    assert plan.places.category_key == "restaurant"
     assert plan.preference_updates.budget == "budget"
 
 
 def test_refine_closer_and_premium():
     first = heuristic_plan("Suggest cafes").places.model_dump()
     assert heuristic_plan("anything closer?", first, True).places.rank_by_distance
-    assert heuristic_plan("something fancier", first, True).places.min_rating == 4.2
+    assert heuristic_plan("something fancier", first, True).places.budget == "premium"
 
 
 def test_filter_previous_results():
@@ -102,7 +108,18 @@ def test_new_category_is_new_search_not_refinement():
     first = heuristic_plan("Suggest some restaurants").places.model_dump()
     plan = heuristic_plan("What about a nice place for drinks and dancing?", first, True)
     assert plan.places.action == "search"
-    assert plan.places.included_type in {"night_club", "bar"}
+    assert plan.places.category_key in {"club", "bar"}
+
+
+def test_specific_cuisine_becomes_keyword():
+    plan = heuristic_plan("tibetan food nearby")
+    assert plan.places.keyword == "tibetan"
+    assert heuristic_plan("Where can I get good momos nearby?").places.keyword is None  # covered by a category
+
+
+def test_unrecognised_message_is_low_confidence():
+    assert heuristic_plan("hmm what do you reckon about the vibe").confident is False
+    assert heuristic_plan("What's the Wi-Fi password?").confident is True
 
 
 def test_switch_location():

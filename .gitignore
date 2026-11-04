@@ -4,6 +4,11 @@
 !.env.example
 frontend/.env.local
 
+# Local runtime data (SQLite, uploads, Chroma, OSM snapshot, secret key)
+.data/
+**/.data/
+data/discovery/osm_snapshot.json
+
 # Python
 __pycache__/
 *.pyc

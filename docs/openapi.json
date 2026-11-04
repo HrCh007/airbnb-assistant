@@ -1,9 +1,9 @@
 {
  "openapi": "3.1.0",
  "info": {
-  "title": "Delhi Stays Guest Assistant API",
-  "description": "Location-aware, multi-property RAG assistant for Airbnb guests in Delhi. Guest endpoints under /api, admin endpoints under /api/admin (Bearer JWT).",
-  "version": "1.0.0"
+  "title": "Hideout Studios Guest Assistant API",
+  "description": "Zero-cost, locally hosted RAG assistant for Airbnb guests in Delhi (Ollama + sentence-transformers + ChromaDB + SQLite + OpenStreetMap). Guest endpoints under /api, admin endpoints under /api/admin (Bearer JWT).",
+  "version": "2.0.0"
  },
  "paths": {
   "/api/status": {
@@ -11,7 +11,7 @@
     "tags": [
      "meta"
     ],
-    "summary": "Feature availability for the frontend",
+    "summary": "Which local components are available",
     "operationId": "status_api_status_get",
     "responses": {
      "200": {
@@ -326,6 +326,75 @@
     }
    }
   },
+  "/api/chat/sessions/{session_id}/preferences": {
+   "put": {
+    "tags": [
+     "chat"
+    ],
+    "summary": "Set guest preferences, e.g. the search radius (1/3/5/10 km)",
+    "operationId": "update_preferences_api_chat_sessions__session_id__preferences_put",
+    "parameters": [
+     {
+      "name": "session_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Session Id"
+      }
+     },
+     {
+      "name": "x-session-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Session-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PreferencesIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SessionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/chat/sessions/{session_id}/verify-pin": {
    "post": {
     "tags": [
@@ -588,48 +657,6 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/PlacesSearchResponse"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/places/details/{place_id}": {
-   "get": {
-    "tags": [
-     "places"
-    ],
-    "summary": "Places Details",
-    "operationId": "places_details_api_places_details__place_id__get",
-    "parameters": [
-     {
-      "name": "place_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "string",
-       "title": "Place Id"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/PlaceResult"
         }
        }
       }
@@ -1292,7 +1319,7 @@
     "tags": [
      "admin"
     ],
-    "summary": "Re-index every document (e.g. after changing embedding provider)",
+    "summary": "Re-embed every document of every property (e.g. after changing the embedding model)",
     "operationId": "reindex_all_api_admin_documents_reindex_all_post",
     "responses": {
      "202": {
@@ -1309,6 +1336,53 @@
       "HTTPBearer": []
      }
     ]
+   }
+  },
+  "/api/admin/geocode": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Find coordinates for an address (OpenStreetMap Nominatim)",
+    "operationId": "geocode_address_api_admin_geocode_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "q",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "minLength": 3,
+       "maxLength": 300,
+       "title": "Q"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
    }
   },
   "/api/admin/curated": {
@@ -1517,6 +1591,7 @@
      "meta"
     ],
     "summary": "Health",
+    "description": "Liveness/readiness: the API is healthy when SQLite and ChromaDB respond.\nOllama is reported but optional (answers fall back to extractive mode).",
     "operationId": "health_health_get",
     "responses": {
      "200": {
@@ -1720,17 +1795,31 @@
       ],
       "title": "Longitude"
      },
-     "google_place_id": {
+     "osm_id": {
       "anyOf": [
        {
         "type": "string",
-        "maxLength": 255
+        "maxLength": 64,
+        "pattern": "^(node|way|relation)/\\d+$"
        },
        {
         "type": "null"
        }
       ],
-      "title": "Google Place Id"
+      "title": "Osm Id"
+     },
+     "price_level": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 4.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price Level"
      },
      "tags": {
       "items": {
@@ -1823,17 +1912,31 @@
       ],
       "title": "Longitude"
      },
-     "google_place_id": {
+     "osm_id": {
       "anyOf": [
        {
         "type": "string",
-        "maxLength": 255
+        "maxLength": 64,
+        "pattern": "^(node|way|relation)/\\d+$"
        },
        {
         "type": "null"
        }
       ],
-      "title": "Google Place Id"
+      "title": "Osm Id"
+     },
+     "price_level": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 4.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price Level"
      },
      "tags": {
       "items": {
@@ -2565,7 +2668,7 @@
    },
    "PlaceResult": {
     "properties": {
-     "place_id": {
+     "osm_id": {
       "anyOf": [
        {
         "type": "string"
@@ -2574,7 +2677,7 @@
         "type": "null"
        }
       ],
-      "title": "Place Id"
+      "title": "Osm Id"
      },
      "name": {
       "type": "string",
@@ -2590,6 +2693,17 @@
        }
       ],
       "title": "Category"
+     },
+     "cuisine": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cuisine"
      },
      "types": {
       "items": {
@@ -2643,38 +2757,16 @@
       ],
       "title": "Distance Km"
      },
-     "rating": {
+     "opening_hours": {
       "anyOf": [
        {
-        "type": "number"
+        "type": "string"
        },
        {
         "type": "null"
        }
       ],
-      "title": "Rating"
-     },
-     "user_rating_count": {
-      "anyOf": [
-       {
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "User Rating Count"
-     },
-     "price_level": {
-      "anyOf": [
-       {
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Price Level"
+      "title": "Opening Hours"
      },
      "open_now": {
       "anyOf": [
@@ -2687,13 +2779,49 @@
       ],
       "title": "Open Now"
      },
-     "opening_hours": {
-      "items": {
-       "type": "string"
-      },
-      "type": "array",
-      "title": "Opening Hours",
-      "default": []
+     "open_late": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Open Late"
+     },
+     "price_level": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price Level"
+     },
+     "price_note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price Note"
+     },
+     "diet": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Diet"
      },
      "phone": {
       "anyOf": [
@@ -2716,6 +2844,17 @@
        }
       ],
       "title": "Website"
+     },
+     "rating": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rating"
      },
      "summary": {
       "anyOf": [
@@ -2750,15 +2889,27 @@
       ],
       "title": "Directions Url"
      },
+     "osm_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Osm Url"
+     },
      "source": {
       "type": "string",
       "enum": [
-       "google_places",
+       "osm",
+       "osm_snapshot",
        "host_curated",
-       "mock"
+       "sample"
       ],
       "title": "Source",
-      "default": "google_places"
+      "default": "osm"
      },
      "host_note": {
       "anyOf": [
@@ -2788,7 +2939,7 @@
      "name"
     ],
     "title": "PlaceResult",
-    "description": "A local recommendation. Every field comes from Google Places or the host's\ncurated list - never generated by the LLM."
+    "description": "A local recommendation. Every field comes from OpenStreetMap, the host's\ncurated list or the clearly-labelled sample dataset - never from the LLM."
    },
    "PlacesSearchRequest": {
     "properties": {
@@ -2803,17 +2954,17 @@
       "minLength": 2,
       "title": "Query"
      },
-     "included_type": {
+     "category_key": {
       "anyOf": [
        {
         "type": "string",
-        "maxLength": 60
+        "maxLength": 40
        },
        {
         "type": "null"
        }
       ],
-      "title": "Included Type"
+      "title": "Category Key"
      },
      "radius_m": {
       "anyOf": [
@@ -2839,38 +2990,12 @@
       ],
       "title": "Open Now"
      },
-     "max_price_level": {
-      "anyOf": [
-       {
-        "type": "integer",
-        "maximum": 4.0,
-        "minimum": 0.0
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Max Price Level"
-     },
-     "min_rating": {
-      "anyOf": [
-       {
-        "type": "number",
-        "maximum": 5.0,
-        "minimum": 0.0
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Min Rating"
-     },
      "limit": {
       "type": "integer",
-      "maximum": 10.0,
+      "maximum": 20.0,
       "minimum": 1.0,
       "title": "Limit",
-      "default": 5
+      "default": 6
      }
     },
     "type": "object",
@@ -2912,6 +3037,17 @@
        }
       ],
       "title": "Notice"
+     },
+     "attribution": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Attribution"
      }
     },
     "type": "object",
@@ -2922,6 +3058,53 @@
      "results"
     ],
     "title": "PlacesSearchResponse"
+   },
+   "PreferencesIn": {
+    "properties": {
+     "max_distance_km": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 25.0,
+        "minimum": 0.5
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Distance Km"
+     },
+     "budget": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "budget",
+         "moderate",
+         "premium"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Budget"
+     },
+     "dietary": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 60
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dietary"
+     }
+    },
+    "type": "object",
+    "title": "PreferencesIn"
    },
    "PropertyAdminOut": {
     "properties": {

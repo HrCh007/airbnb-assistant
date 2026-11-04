@@ -1,17 +1,16 @@
-# Runtime dependencies (pinned to the versions tested in this repository).
+# Core runtime dependencies (pinned to the versions tested in this repository).
+# No paid-API SDKs: everything runs locally.
 fastapi==0.162.0
 uvicorn[standard]==0.54.0
 sqlalchemy[asyncio]==2.1.6
-asyncpg==0.32.0
-pgvector==0.5.1
-alembic==1.20.1
+aiosqlite==0.22.1
 pydantic==2.14.2
 pydantic-settings==2.16.2
-anthropic==2.4.0
-openai==3.42.1
+chromadb==1.5.9
 httpx==0.28.1
-pypdf==6.21.4
+pymupdf==2.1
 python-docx==1.2.0
 bcrypt==5.0.0
 PyJWT==2.15.1
 python-multipart==0.0.33
+tzdata

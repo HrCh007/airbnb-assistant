@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.rate_limit import rate_limit
 from app.core.security import create_access_token, verify_password
+from app.location.geocode import GeocodeError, geocode
 from app.models import (
     AdminUser,
     Conversation,
@@ -25,11 +26,19 @@ from app.models import (
     Property,
     PropertyDocument,
 )
+from app.rag import vectorstore
 from app.rag.extractors import ExtractionError, detect_type, validate_magic
-from app.rag.ingestion import create_document, schedule_processing, sync_profile_document
+from app.rag.ingestion import (
+    create_document,
+    delete_document_files,
+    reindex_property,
+    schedule_processing,
+    sync_profile_document,
+)
 from app.schemas.common import CuratedIn, CuratedOut, DocumentOut, LoginIn, TokenOut
 from app.schemas.property import LocationCreate, LocationOut, PropertyAdminOut, PropertyCreate, PropertyUpdate
 from app.services.properties import create_property, get_property, list_properties, to_admin_out, update_property
+from app.services.runtime import runtime_status
 
 log = logging.getLogger(__name__)
 
@@ -61,7 +70,6 @@ async def me(admin: AdminUser = Depends(require_admin)):
 @router.get("/dashboard")
 async def dashboard(db: AsyncSession = Depends(get_db)):
     since = datetime.now(UTC) - timedelta(days=7)
-    s = get_settings()
     by_status = dict((await db.execute(select(PropertyDocument.status, func.count()).where(PropertyDocument.is_system.is_(False)).group_by(PropertyDocument.status))).all())
     intents = dict((await db.execute(select(Message.intent, func.count()).where(Message.role == "assistant", Message.created_at >= since, Message.intent.is_not(None)).group_by(Message.intent))).all())
     return {
@@ -76,11 +84,7 @@ async def dashboard(db: AsyncSession = Depends(get_db)):
         "conversations_7d": await db.scalar(select(func.count()).select_from(Conversation).where(Conversation.created_at >= since)),
         "messages_7d": await db.scalar(select(func.count()).select_from(Message).where(Message.created_at >= since)),
         "intents_7d": intents,
-        "integrations": {
-            "llm": "claude" if s.llm_enabled else "offline (no ANTHROPIC_API_KEY)",
-            "embeddings": s.resolved_embedding_provider,
-            "places": s.resolved_places_provider,
-        },
+        "integrations": await runtime_status(),
     }
 
 
@@ -132,6 +136,10 @@ async def admin_update_property(property_id: uuid.UUID, body: PropertyUpdate, db
 async def admin_delete_property(property_id: uuid.UUID, hard: bool = False, db: AsyncSession = Depends(get_db)):
     prop = await get_property(db, property_id, include_inactive=True)
     if hard:
+        docs = (await db.execute(select(PropertyDocument).where(PropertyDocument.property_id == prop.id))).scalars().all()
+        for doc in docs:
+            await delete_document_files(doc)
+        await vectorstore.delete_property(prop.id)
         await db.delete(prop)  # cascades to documents, chunks and curated picks
     else:
         prop.is_active = False
@@ -207,7 +215,8 @@ async def delete_document(document_id: uuid.UUID, db: AsyncSession = Depends(get
         raise HTTPException(404, "Document not found")
     if doc.is_system:
         raise HTTPException(400, "The auto-generated profile document is managed from the property form.")
-    await db.delete(doc)  # chunks cascade
+    await delete_document_files(doc)  # vectors + stored file
+    await db.delete(doc)  # chunk rows cascade
     await db.commit()
 
 
@@ -229,22 +238,22 @@ async def reindex_document(document_id: uuid.UUID, db: AsyncSession = Depends(ge
 
 
 @router.post("/documents/reindex-all", status_code=202,
-             summary="Re-index every document (e.g. after changing embedding provider)")
+             summary="Re-embed every document of every property (e.g. after changing the embedding model)")
 async def reindex_all(db: AsyncSession = Depends(get_db)):
-    docs = (await db.execute(select(PropertyDocument))).scalars().all()
+    props = (await db.execute(select(Property))).scalars().unique().all()
     count = 0
-    for doc in docs:
-        if doc.is_system:
-            prop = await db.get(Property, doc.property_id)
-            await sync_profile_document(db, prop)
-        else:
-            doc.status = "pending"
-        count += 1
-    await db.commit()
-    for doc in docs:
-        if not doc.is_system:
-            schedule_processing(doc.id)
-    return {"scheduled": count}
+    for prop in props:
+        count += await reindex_property(db, prop)
+    return {"reindexed_documents": count}
+
+
+# --------------------------------------------------------------------------- geocoding
+@router.get("/geocode", summary="Find coordinates for an address (OpenStreetMap Nominatim)")
+async def geocode_address(q: str = Query(min_length=3, max_length=300)):
+    try:
+        return {"results": await geocode(q), "attribution": "© OpenStreetMap contributors"}
+    except GeocodeError as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 # --------------------------------------------------------------------------- curated recommendations

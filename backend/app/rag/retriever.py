@@ -1,21 +1,28 @@
 """Hybrid retrieval over a single property's knowledge base.
 
-Isolation guarantee: `property_id` is a required argument and is applied as a
-WHERE filter inside both the vector and the keyword query, i.e. *before*
-ranking. There is no code path that searches across properties.
+* Vector search: the property's own ChromaDB collection (cosine similarity).
+* Keyword search: BM25 over the property's chunks in SQLite (catches exact terms
+  like "Wi-Fi", "keybox", "B-12" that small embedding models can miss).
+* Fusion: reciprocal rank fusion (k=60).
+
+Isolation: `property_id` is required, selects the property's collection, is a
+`where` filter in Chroma and in SQL, and every result is re-checked.
 """
 
 from __future__ import annotations
 
-import re
+import math
 import uuid
+from collections import Counter
 from dataclasses import dataclass, field
 
-from sqlalchemy import text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.rag.embeddings import _STOP, _SYNONYMS, get_embedder, normalise_terms
+from app.models import KnowledgeChunk
+from app.rag import vectorstore
+from app.rag.embeddings import _SYNONYMS, _tokens, get_embedder
 
 _RRF_K = 60
 
@@ -30,14 +37,14 @@ class RetrievedChunk:
     is_sensitive: bool
     metadata: dict
     vector_similarity: float | None = None
-    keyword_rank: float | None = None
+    keyword_score: float | None = None
     score: float = 0.0
 
 
 @dataclass
 class RetrievalResult:
     chunks: list[RetrievedChunk] = field(default_factory=list)
-    withheld_sensitive: bool = False  # sensitive chunks matched but PIN not verified
+    withheld_sensitive: bool = False  # a sensitive chunk matched but the PIN isn't verified
 
     @property
     def best_similarity(self) -> float:
@@ -58,19 +65,38 @@ class RetrievalResult:
         ]
 
 
-def _keyword_query(q: str) -> str | None:
-    q = normalise_terms(q)
-    words = re.findall(r"[a-z0-9]+", q)
-    terms: list[str] = []
-    for w in words:
-        if w in _STOP or len(w) < 2:
+def _query_terms(q: str) -> list[str]:
+    terms = []
+    for t in _tokens(q):
+        if len(t) < 2:
             continue
-        terms.append(w)
-        syn = _SYNONYMS.get(w)
-        if syn and syn != w:
+        terms.append(t)
+        syn = _SYNONYMS.get(t)
+        if syn and syn != t:
             terms.append(syn)
-    terms = list(dict.fromkeys(terms))[:16]
-    return " | ".join(terms) if terms else None
+    return list(dict.fromkeys(terms))
+
+
+def _bm25(rows: list[KnowledgeChunk], terms: list[str], k1: float = 1.4, b: float = 0.75) -> list[tuple[KnowledgeChunk, float]]:
+    if not rows or not terms:
+        return []
+    docs = [Counter(_tokens(f"{r.section or ''} {r.content}")) for r in rows]
+    avgdl = sum(sum(d.values()) for d in docs) / len(docs) or 1.0
+    n = len(docs)
+    df = {t: sum(1 for d in docs if t in d) for t in terms}
+    scored = []
+    for row, d in zip(rows, docs, strict=True):
+        dl = sum(d.values()) or 1
+        score = 0.0
+        for t in terms:
+            tf = d.get(t, 0)
+            if not tf:
+                continue
+            idf = math.log(1 + (n - df[t] + 0.5) / (df[t] + 0.5))
+            score += idf * tf * (k1 + 1) / (tf + k1 * (1 - b + b * dl / avgdl))
+        if score > 0:
+            scored.append((row, score))
+    return sorted(scored, key=lambda x: x[1], reverse=True)
 
 
 async def retrieve(
@@ -85,85 +111,49 @@ async def retrieve(
         raise TypeError("property_id must be a UUID")
     s = get_settings()
     top_k = top_k or s.retrieval_top_k
-    cand = s.retrieval_candidate_k
 
-    qvec = await get_embedder().embed_query(query)
-    vec_literal = "[" + ",".join(f"{v:.7f}" for v in qvec) + "]"
-
-    await db.execute(text("SET LOCAL hnsw.ef_search = 100"))
-    vector_rows = (
-        await db.execute(
-            text(
-                """
-                SELECT id, property_id, document_id, section, content, is_sensitive, metadata,
-                       1 - (embedding <=> CAST(:qvec AS vector)) AS similarity
-                FROM knowledge_chunks
-                WHERE property_id = :pid
-                ORDER BY embedding <=> CAST(:qvec AS vector)
-                LIMIT :k
-                """
-            ),
-            {"qvec": vec_literal, "pid": property_id, "k": cand},
-        )
-    ).mappings().all()
-
-    keyword_rows = []
-    kq = _keyword_query(query) if s.hybrid_search else None
-    if kq:
-        keyword_rows = (
-            await db.execute(
-                text(
-                    """
-                    SELECT id, property_id, document_id, section, content, is_sensitive, metadata,
-                           ts_rank_cd(tsv, to_tsquery('english', :kq)) AS rank
-                    FROM knowledge_chunks
-                    WHERE property_id = :pid AND tsv @@ to_tsquery('english', :kq)
-                    ORDER BY rank DESC
-                    LIMIT :k
-                    """
-                ),
-                {"kq": kq, "pid": property_id, "k": cand},
-            )
-        ).mappings().all()
+    rows = (await db.execute(select(KnowledgeChunk).where(KnowledgeChunk.property_id == property_id))).scalars().all()
+    by_id = {r.id: r for r in rows}
+    if not rows:
+        return RetrievalResult()
 
     fused: dict[uuid.UUID, RetrievedChunk] = {}
 
-    def _get(row) -> RetrievedChunk:
-        rc = fused.get(row["id"])
+    def _get(row: KnowledgeChunk) -> RetrievedChunk:
+        rc = fused.get(row.id)
         if rc is None:
             rc = RetrievedChunk(
-                id=row["id"],
-                property_id=row["property_id"],
-                document_id=row["document_id"],
-                section=row["section"],
-                content=row["content"],
-                is_sensitive=row["is_sensitive"],
-                metadata=row["metadata"] or {},
+                id=row.id, property_id=row.property_id, document_id=row.document_id, section=row.section,
+                content=row.content, is_sensitive=row.is_sensitive, metadata=row.metadata_ or {},
             )
-            fused[row["id"]] = rc
+            fused[row.id] = rc
         return rc
 
-    for rank, row in enumerate(vector_rows):
-        sim = float(row["similarity"])
-        if sim < s.retrieval_min_vector_similarity:
-            continue
+    # Vector search in the property's own collection.
+    qvec = await get_embedder().embed_query(query)
+    hits = await vectorstore.query(property_id, qvec, s.retrieval_candidate_k)
+    rank = 0
+    for hit in hits:
+        row = by_id.get(hit.chunk_id)
+        if row is None or hit.similarity < s.retrieval_min_vector_similarity:
+            continue  # stale vector or weak match
         rc = _get(row)
-        rc.vector_similarity = sim
+        rc.vector_similarity = hit.similarity
         rc.score += 1.0 / (_RRF_K + rank + 1)
-    for rank, row in enumerate(keyword_rows):
+        rank += 1
+
+    # Keyword search (BM25) over the same property's chunks.
+    for rank, (row, score) in enumerate(_bm25(list(rows), _query_terms(query))[: s.retrieval_candidate_k]):
         rc = _get(row)
-        rc.keyword_rank = float(row["rank"])
-        rc.vector_similarity = rc.vector_similarity  # may stay None
+        rc.keyword_score = score
         rc.score += 1.0 / (_RRF_K + rank + 1)
 
     ranked = sorted(fused.values(), key=lambda c: c.score, reverse=True)
-    # Defence in depth: never return a chunk from another property.
-    ranked = [c for c in ranked if c.property_id == property_id]
+    ranked = [c for c in ranked if c.property_id == property_id]  # defence in depth
 
     result = RetrievalResult()
     for position, c in enumerate(ranked):
         if c.is_sensitive and not allow_sensitive:
-            # Only signal "withheld" when the sensitive fact was a top match.
             if position < 2:
                 result.withheld_sensitive = True
             continue

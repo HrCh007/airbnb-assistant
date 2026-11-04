@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  Coffee,
   Compass,
   FlaskConical,
   Home,
@@ -24,6 +25,7 @@ import { PinDialog } from "./PinDialog";
 const QUICK_ACTIONS = [
   { key: "property", label: "Property info", icon: Home },
   { key: "food", label: "Food nearby", icon: UtensilsCrossed },
+  { key: "cafes", label: "Cafes", icon: Coffee },
   { key: "things_to_do", label: "Things to do", icon: Compass },
   { key: "shopping", label: "Shopping", icon: ShoppingBag },
   { key: "nightlife", label: "Nightlife", icon: Wine },
@@ -31,7 +33,7 @@ const QUICK_ACTIONS = [
 ] as const;
 
 const GREETING =
-  "Hey! Welcome to your local Delhi guide. I'm here to help you make the most of your stay. Whether you need information about your accommodation, great places to eat, things to do or local recommendations, just ask me!";
+  "Hey! Welcome to Hideout Studios — I'm your local Delhi guide. I'm here to help you make the most of your stay. Whether you need information about your accommodation, great places to eat, things to do or local recommendations, just ask me!";
 
 export function ChatApp() {
   const chat = useChat();
@@ -40,7 +42,10 @@ export function ChatApp() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const property = session?.property ?? null;
   const needsProperty = !!session?.location_slug && !property && (session?.available_properties.length ?? 0) > 0;
-  const devMode = status && (status.llm === "offline" || status.places !== "google_places");
+  const llmState = status?.llm.state;
+  const sampleOnly = !!status && !status.discovery.live_osm && !status.discovery.osm_snapshot && status.discovery.sample_data;
+  const devMode = !!status && (llmState !== "ready" || sampleOnly);
+  const radiusKm = (session?.preferences?.max_distance_km as number | undefined) ?? null;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -55,11 +60,11 @@ export function ChatApp() {
     <div className="mx-auto flex h-dvh max-w-3xl flex-col">
       {/* ---------------------------------------------------------------- header */}
       <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-sand-100 bg-paper/85 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur">
-        <div aria-label="Delhi Stays logo" className="flex size-10 items-center justify-center rounded-2xl bg-ink font-display text-lg font-semibold text-paper">
-          DS
+        <div aria-label="Hideout Studios logo" className="flex size-10 items-center justify-center rounded-2xl bg-ink font-display text-lg font-semibold text-paper">
+          HS
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="font-display text-lg leading-tight font-semibold">Delhi Stays</h1>
+          <h1 className="font-display text-lg leading-tight font-semibold">Hideout Studios</h1>
           <p className="truncate text-xs text-ink-muted" data-testid="header-context">
             {property ? (
               <>
@@ -74,9 +79,9 @@ export function ChatApp() {
         {devMode && (
           <span
             className="hidden items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-medium text-amber-800 sm:inline-flex"
-            title={`AI: ${status?.llm} · Places: ${status?.places} · Embeddings: ${status?.embeddings}`}
+            title={`AI: ${status?.llm.model} (${llmState}) · Embeddings: ${status?.embeddings.provider}`}
           >
-            <FlaskConical className="size-3" aria-hidden /> Dev mode
+            <FlaskConical className="size-3" aria-hidden /> Limited mode
           </span>
         )}
         {property?.requires_pin && (
@@ -151,11 +156,11 @@ export function ChatApp() {
             )}
 
             {devMode && (
-              <p className="rounded-xl bg-amber-50/80 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
-                <strong>Development mode:</strong>{" "}
-                {status?.llm === "offline" && "AI answers run offline (no Claude API key) and quote the property guide directly. "}
-                {status?.places === "mock" && "Local results are fictional mock data. "}
-                {status?.places === "disabled" && "Live local search is off (no Google Maps API key). "}
+              <p className="rounded-xl bg-amber-50/80 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200" data-testid="limited-mode">
+                <strong>Heads-up:</strong>{" "}
+                {llmState === "model_not_downloaded" && `The local AI model (${status?.llm.model}) is still downloading, so I'll quote the property guide directly for now. `}
+                {llmState === "unreachable" && "The local AI model isn't running, so I'll quote the property guide directly. "}
+                {sampleOnly && "Nearby places come from a FICTIONAL sample dataset (live map search is off). "}
               </p>
             )}
 
@@ -175,6 +180,28 @@ export function ChatApp() {
 
       {/* ---------------------------------------------------------------- footer */}
       <footer className="border-t border-sand-100 bg-paper/95 px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        {property && (
+          <div className="mb-1.5 flex items-center gap-1.5 text-[12px] text-ink-muted" role="radiogroup" aria-label="Search radius">
+            <span>Search within</span>
+            {(status?.radii_km ?? [1, 3, 5, 10]).map((km) => {
+              const active = radiusKm === km || (radiusKm == null && km === 3);
+              return (
+                <button
+                  key={km}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => chat.setRadius(km)}
+                  className={`rounded-full px-2.5 py-0.5 font-medium transition ${
+                    active ? "bg-ink text-paper" : "bg-white text-ink-soft ring-1 ring-sand-200 hover:ring-terracotta-500"
+                  }`}
+                >
+                  {km} km
+                </button>
+              );
+            })}
+          </div>
+        )}
         {property && (
           <nav aria-label="Quick actions" className="rail -mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1">
             {QUICK_ACTIONS.map(({ key, label, icon: Icon }) => (

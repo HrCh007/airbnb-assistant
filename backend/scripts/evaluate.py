@@ -1,7 +1,7 @@
 """Evaluate the assistant on data/eval/eval_set.json and write a report.
 
-    python -m scripts.evaluate                 # uses current env (DATABASE_URL, keys)
-    python -m scripts.evaluate --places mock   # force the mock Places provider
+    python -m scripts.evaluate                  # uses the current environment
+    python -m scripts.evaluate --offline-maps   # use the bundled sample places (no Overpass)
 
 Runs every case through the real HTTP API (in-process ASGI) against the
 seeded database and computes:
@@ -41,9 +41,9 @@ NF_MARK = "don't have confirmed information"
 FACT_TOKEN = re.compile(r"\+?\d[\d\-:.]*(?:\s?(?:AM|PM|km|m)\b)?|[a-z]+-demo-\d+|[A-Z]-\d+", re.I)
 
 
-async def run(places: str | None) -> dict:
-    if places:
-        os.environ["PLACES_PROVIDER"] = places
+async def run(offline_maps: bool) -> dict:
+    if offline_maps:
+        os.environ["DISCOVERY_LIVE"] = "false"
     os.environ.setdefault("RATE_LIMIT_CHAT_PER_MINUTE", "100000")
     os.environ.setdefault("RATE_LIMIT_DEFAULT_PER_MINUTE", "100000")
 
@@ -52,12 +52,16 @@ async def run(places: str | None) -> dict:
 
     from app.core.config import get_settings
     from app.core.database import dispose_engine, get_sessionmaker
+    from app.llm import ollama
     from app.location.geo import format_distance
     from app.main import create_app
     from app.models import KnowledgeChunk, Message, Property
     from app.rag.retriever import retrieve
+    from app.services.bootstrap import bootstrap
 
     s = get_settings()
+    await bootstrap()
+    llm = await ollama.status(force=True)
     cases = json.loads(EVAL.read_text())["cases"]
     app = create_app()
     results = []
@@ -156,8 +160,9 @@ async def run(places: str | None) -> dict:
     lat = [r["latency_ms"] for r in results]
     summary = {
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        "mode": {"llm": "claude:" + s.claude_model if s.llm_enabled else "offline (no ANTHROPIC_API_KEY)",
-                 "embeddings": s.resolved_embedding_provider, "places": s.resolved_places_provider},
+        "mode": {"llm": f"ollama:{s.ollama_model}" if llm["model_ready"] else "extractive (Ollama model not available)",
+                 "embeddings": __import__("app.rag.embeddings", fromlist=["get_embedder"]).get_embedder().name,
+                 "places": "live OpenStreetMap" if s.discovery_live else "sample/snapshot datasets"},
         "cases": len(results),
         "retrieval_hit_at_k": pct(r["retrieval_hit"] for r in results if "retrieval_hit" in r),
         "retrieval_mrr": round(statistics.mean(r["reciprocal_rank"] for r in results if "reciprocal_rank" in r), 3),
@@ -220,11 +225,11 @@ def write_report(data: dict) -> Path:
         "",
         "## How to read this",
         "",
-        "- In **offline mode** answers are extractive (quoted from retrieved chunks), so groundedness is high by",
-        "  construction; this run mainly measures routing, retrieval and isolation. Re-run with",
-        "  `ANTHROPIC_API_KEY` (and `OPENAI_API_KEY` for semantic embeddings) to evaluate Claude-generated answers.",
-        "- With `PLACES_PROVIDER=mock`, place results are fictional; the local metrics only check that a search ran",
-        "  around the property's coordinates and returned cards. Live quality requires `GOOGLE_MAPS_API_KEY`.",
+        "- In **extractive mode** (no Ollama model) answers are quoted from retrieved chunks, so groundedness is high by",
+        "  construction; this run mainly measures routing, retrieval and isolation. Re-run inside Docker with the",
+        "  model downloaded (`docker compose exec backend python -m scripts.evaluate`) to evaluate LLM answers.",
+        "- With the sample dataset, place results are fictional; the local metrics only check that a search ran",
+        "  around the property's coordinates and returned cards.",
         "- The evaluation set was also used while developing the heuristic planner and extractive answerer, so treat",
         "  these numbers as a **regression suite**, not an unbiased estimate of real-world accuracy. Add new cases",
         "  from real guest conversations (anonymised) to measure generalisation.",
@@ -238,9 +243,9 @@ def write_report(data: dict) -> Path:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--places", choices=["mock", "google", "disabled"], default=None)
+    ap.add_argument("--offline-maps", action="store_true")
     args = ap.parse_args()
-    data = asyncio.run(run(args.places))
+    data = asyncio.run(run(args.offline_maps))
     path = write_report(data)
     print(json.dumps(data["summary"], indent=1))
     print(f"Report written to {path}")

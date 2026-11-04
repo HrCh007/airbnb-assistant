@@ -1,26 +1,27 @@
-"""Embedding providers.
+"""Local embedding providers (no API keys, no network at query time).
 
-* OpenAIEmbedder   - text-embedding-3-small (1536-d) via the official SDK.
+* SentenceTransformerEmbedder - runs a sentence-transformers model on the local
+  CPU (default: all-MiniLM-L6-v2, 384 dimensions). The Docker image downloads
+  the model at build time, so it works offline afterwards.
 * LocalHashEmbedder - deterministic feature-hashing embedder (word unigrams,
-  bigrams and character trigrams, signed hashing, L2-normalised). It is a
-  *lexical* model used for offline development and automated tests when no
-  OPENAI_API_KEY is configured. It performs real vector retrieval but has no
-  semantic understanding; use OpenAI in production.
+  bigrams, character trigrams). Lexical only; used by the automated tests and
+  as an automatic fallback if the model can't be loaded.
 
-Changing provider changes the vector space: re-index all documents afterwards
-(POST /api/admin/documents/reindex-all or `python -m scripts.reindex`).
+Vectors from different providers/models are not comparable: each ChromaDB
+collection records the embedder that produced it, and the app re-indexes
+automatically when that changes (see rag/vectorstore.py).
 """
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import math
 import re
 from typing import Protocol
 
-from app.core.config import Settings, get_settings
-from app.core.errors import ServiceUnavailableError
+from app.core.config import get_settings
 
 log = logging.getLogger(__name__)
 
@@ -104,53 +105,56 @@ class LocalHashEmbedder:
         return self._embed(text)
 
 
-class OpenAIEmbedder:
-    name = "openai"
+class SentenceTransformerEmbedder:
+    """sentence-transformers model, executed in a worker thread so the event loop
+    stays responsive. Embeddings are L2-normalised (cosine similarity)."""
 
-    def __init__(self, settings: Settings) -> None:
-        from openai import AsyncOpenAI
+    def __init__(self, model_name: str, device: str = "cpu") -> None:
+        from sentence_transformers import SentenceTransformer  # heavy import, done lazily
 
-        self.dim = settings.embedding_dim
-        self.model = settings.openai_embedding_model
-        self._client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=30.0, max_retries=3)
+        self._model = SentenceTransformer(model_name, device=device)
+        getter = getattr(self._model, "get_embedding_dimension", None) or getattr(
+            self._model, "get_sentence_embedding_dimension", lambda: None
+        )
+        dim = getter()
+        self.dim = int(dim) if dim else len(self._model.encode(["x"])[0])
+        self.name = f"st:{model_name.rsplit('/', 1)[-1]}"
 
-    async def _embed(self, texts: list[str]) -> list[list[float]]:
-        import openai
-
-        out: list[list[float]] = []
-        try:
-            for i in range(0, len(texts), 96):
-                batch = [t[:8000] for t in texts[i : i + 96]]
-                resp = await self._client.embeddings.create(
-                    model=self.model, input=batch, dimensions=self.dim
-                )
-                out.extend(d.embedding for d in sorted(resp.data, key=lambda d: d.index))
-        except openai.APIError as exc:
-            log.error("OpenAI embeddings failed: %s", type(exc).__name__)
-            raise ServiceUnavailableError("Embedding service is unavailable.") from exc
-        return out
+    def _encode(self, texts: list[str]) -> list[list[float]]:
+        vecs = self._model.encode(
+            texts, batch_size=32, normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=False
+        )
+        return [v.tolist() for v in vecs]
 
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return await self._embed(texts)
+        return await asyncio.to_thread(self._encode, texts) if texts else []
 
     async def embed_query(self, text: str) -> list[float]:
-        return (await self._embed([text]))[0]
+        return (await asyncio.to_thread(self._encode, [text]))[0]
 
 
 _embedder: Embedder | None = None
 
 
 def get_embedder() -> Embedder:
+    """The configured embedder; falls back to the hash embedder (with a warning)
+    if the sentence-transformers model can't be loaded, so the app keeps working."""
     global _embedder
     if _embedder is None:
         s = get_settings()
-        if s.resolved_embedding_provider == "openai":
-            if not s.openai_api_key:
-                raise RuntimeError("EMBEDDING_PROVIDER=openai requires OPENAI_API_KEY")
-            _embedder = OpenAIEmbedder(s)
+        if s.embedding_provider == "sentence-transformers":
+            try:
+                _embedder = SentenceTransformerEmbedder(s.embedding_model, s.embedding_device)
+            except Exception as exc:  # missing package, model not downloaded and offline, ...
+                log.warning(
+                    "Could not load embedding model %s (%s); falling back to the lexical hash embedder. "
+                    "Retrieval quality is reduced until the model is available.",
+                    s.embedding_model, type(exc).__name__,
+                )
+                _embedder = LocalHashEmbedder(384)
         else:
-            _embedder = LocalHashEmbedder(s.embedding_dim)
-        log.info("Embedding provider: %s", _embedder.name)
+            _embedder = LocalHashEmbedder(384)
+        log.info("Embedding provider: %s (%d dimensions)", _embedder.name, _embedder.dim)
     return _embedder
 
 

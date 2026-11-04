@@ -6,7 +6,7 @@ const display = Fraunces({ subsets: ["latin"], variable: "--font-display-face", 
 const body = Inter({ subsets: ["latin"], variable: "--font-body", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Delhi Stays · Your Local Guide",
+  title: "Hideout Studios · Your Local Guide",
   description: "Your AI local guide for your stay in Delhi — property help and neighbourhood recommendations.",
 };
 

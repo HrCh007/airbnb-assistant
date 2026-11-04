@@ -1,279 +1,213 @@
-"""Local discovery providers.
+"""Local discovery data sources (all free, no API keys).
 
-* GooglePlacesProvider - Google Places API (New): Text Search, Nearby Search,
-  Place Details. https://developers.google.com/maps/documentation/places/web-service/op-overview
-* MockPlacesProvider   - development-only adapter returning obviously fictional,
-  clearly labelled results ("[DEV MOCK] ..."). Only active when
-  PLACES_PROVIDER=mock. Never used in production.
-* DisabledPlacesProvider - used when no API key is configured: returns no
-  results with an explanatory notice, so the assistant says live search is
-  unavailable instead of inventing businesses.
+* OverpassProvider - live OpenStreetMap data from the public Overpass API.
+  Respects the usage policy: identifying User-Agent, one request at a time,
+  results cached, and a cool-down after failures.
+* DatasetProvider  - local JSON datasets in data/discovery/:
+    - osm_snapshot.json : real OSM data you download once with
+                          `python -m scripts.build_osm_snapshot` (source "osm_snapshot")
+    - sample_places.json: FICTIONAL places for development (source "sample")
+
+Data © OpenStreetMap contributors, available under the ODbL.
 """
 
 from __future__ import annotations
 
 import asyncio
-import hashlib
+import json
 import logging
-import math
-import random
+import re
+import time
 from dataclasses import dataclass, field
-from typing import Protocol
+from pathlib import Path
 
 import httpx
 
-from app.core.config import Settings, get_settings
-from app.schemas.common import PlaceResult
+from app.core.config import get_settings
+from app.location.categories import Category, matches_category, tags_match
+from app.location.geo import haversine_km
 
 log = logging.getLogger(__name__)
 
-PLACES_BASE = "https://places.googleapis.com/v1"
-_PLACE_FIELDS = [
-    "id",
-    "displayName",
-    "formattedAddress",
-    "shortFormattedAddress",
-    "location",
-    "rating",
-    "userRatingCount",
-    "priceLevel",
-    "currentOpeningHours.openNow",
-    "regularOpeningHours.weekdayDescriptions",
-    "primaryType",
-    "primaryTypeDisplayName",
-    "types",
-    "googleMapsUri",
-    "editorialSummary",
-    "businessStatus",
-]
-_DETAIL_EXTRA = ["nationalPhoneNumber", "internationalPhoneNumber", "websiteUri"]
-_PRICE = {
-    "PRICE_LEVEL_FREE": 0,
-    "PRICE_LEVEL_INEXPENSIVE": 1,
-    "PRICE_LEVEL_MODERATE": 2,
-    "PRICE_LEVEL_EXPENSIVE": 3,
-    "PRICE_LEVEL_VERY_EXPENSIVE": 4,
-}
-_PRICE_REV = {v: k for k, v in _PRICE.items()}
+ATTRIBUTION = "Map data © OpenStreetMap contributors (ODbL)"
 
 
-class PlacesError(Exception):
-    """Raised when the upstream places provider fails."""
+class DiscoveryError(Exception):
+    pass
+
+
+@dataclass
+class RawPlace:
+    """A place before ranking: OSM-style tags plus where it came from."""
+
+    osm_id: str | None
+    name: str
+    lat: float
+    lon: float
+    tags: dict
+    source: str  # osm / osm_snapshot / sample
+    extra: dict = field(default_factory=dict)
 
 
 @dataclass
 class SearchSpec:
-    query: str
     latitude: float
     longitude: float
     radius_m: int
-    included_type: str | None = None
-    open_now: bool | None = None
-    max_price_level: int | None = None
-    min_rating: float | None = None
-    max_results: int = 12
-    rank_by_distance: bool = False
-    extra: dict = field(default_factory=dict)
+    category: Category | None = None
+    keyword: str | None = None  # free-text fallback ("tibetan", "rooftop")
+    limit: int = 80
 
 
-class PlacesProvider(Protocol):
-    name: str
-
-    async def search(self, spec: SearchSpec) -> list[PlaceResult]: ...
-
-    async def details(self, place_id: str) -> PlaceResult | None: ...
+def _sanitise_keyword(kw: str) -> str:
+    kw = re.sub(r"[^a-zA-Z0-9 \-]", " ", kw).strip()
+    return re.escape(kw)[:40]
 
 
-def _parse_place(p: dict) -> PlaceResult | None:
-    if p.get("businessStatus") in {"CLOSED_PERMANENTLY"}:
-        return None
-    loc = p.get("location") or {}
-    name = (p.get("displayName") or {}).get("text")
-    if not name:
-        return None
-    return PlaceResult(
-        place_id=p.get("id"),
-        name=name,
-        category=(p.get("primaryTypeDisplayName") or {}).get("text")
-        or (p.get("primaryType") or "").replace("_", " ").title()
-        or None,
-        types=p.get("types") or [],
-        address=p.get("shortFormattedAddress") or p.get("formattedAddress"),
-        latitude=loc.get("latitude"),
-        longitude=loc.get("longitude"),
-        rating=p.get("rating"),
-        user_rating_count=p.get("userRatingCount"),
-        price_level=_PRICE.get(p.get("priceLevel", ""), None),
-        open_now=(p.get("currentOpeningHours") or {}).get("openNow"),
-        opening_hours=(p.get("regularOpeningHours") or {}).get("weekdayDescriptions") or [],
-        phone=p.get("nationalPhoneNumber") or p.get("internationalPhoneNumber"),
-        website=p.get("websiteUri"),
-        summary=(p.get("editorialSummary") or {}).get("text"),
-        maps_url=p.get("googleMapsUri"),
-        source="google_places",
-    )
+def keyword_selectors(keyword: str) -> tuple[str, ...]:
+    kw = _sanitise_keyword(keyword)
+    if not kw:
+        return ()
+    return tuple(
+        f'["{key}"]["name"~"{kw}",i]' for key in ("amenity", "shop", "leisure", "tourism")
+    ) + (f'["cuisine"~"{kw}",i]',)
 
 
-class GooglePlacesProvider:
-    name = "google_places"
+# ------------------------------------------------------------------ Overpass (live)
+class OverpassProvider:
+    name = "osm"
 
-    def __init__(self, settings: Settings, client: httpx.AsyncClient | None = None) -> None:
-        self.s = settings
-        self._client = client or httpx.AsyncClient(timeout=settings.places_timeout_seconds)
-
-    async def _request(self, method: str, url: str, field_mask: str, json: dict | None = None) -> dict:
-        headers = {
-            "X-Goog-Api-Key": self.s.google_maps_api_key,
-            "X-Goog-FieldMask": field_mask,
-            "Content-Type": "application/json",
-        }
-        last_exc: Exception | None = None
-        for attempt in range(self.s.places_max_retries + 1):
-            try:
-                resp = await self._client.request(method, url, headers=headers, json=json)
-                if resp.status_code in (429, 500, 502, 503, 504):
-                    raise PlacesError(f"Places API transient error {resp.status_code}")
-                if resp.status_code >= 400:
-                    # Don't retry client errors (bad key, bad request). Log status only.
-                    status = (resp.json().get("error") or {}).get("status", "") if resp.headers.get("content-type", "").startswith("application/json") else ""
-                    log.error("Places API error %s %s", resp.status_code, status)
-                    raise PlacesError(f"Places API rejected the request ({resp.status_code} {status})")
-                return resp.json()
-            except (httpx.TimeoutException, httpx.TransportError, PlacesError) as exc:
-                last_exc = exc
-                if isinstance(exc, PlacesError) and "rejected" in str(exc):
-                    break
-                if attempt < self.s.places_max_retries:
-                    await asyncio.sleep(0.4 * (2**attempt))
-        raise PlacesError(str(last_exc) if last_exc else "Places API unavailable")
-
-    async def search(self, spec: SearchSpec) -> list[PlaceResult]:
-        mask = ",".join(f"places.{f}" for f in _PLACE_FIELDS)
-        circle = {
-            "center": {"latitude": spec.latitude, "longitude": spec.longitude},
-            "radius": float(min(spec.radius_m, 50000)),
-        }
-        if spec.rank_by_distance and spec.included_type and not spec.query.strip():
-            body: dict = {
-                "includedTypes": [spec.included_type],
-                "maxResultCount": min(spec.max_results, 20),
-                "locationRestriction": {"circle": circle},
-                "rankPreference": "DISTANCE",
-                "languageCode": self.s.places_language,
-                "regionCode": self.s.places_region,
-            }
-            data = await self._request("POST", f"{PLACES_BASE}/places:searchNearby", mask, body)
-        else:
-            body = {
-                "textQuery": spec.query,
-                "locationBias": {"circle": circle},
-                "pageSize": min(spec.max_results, 20),
-                "languageCode": self.s.places_language,
-                "regionCode": self.s.places_region,
-                "rankPreference": "DISTANCE" if spec.rank_by_distance else "RELEVANCE",
-            }
-            if spec.included_type:
-                body["includedType"] = spec.included_type
-                body["strictTypeFiltering"] = False
-            if spec.open_now:
-                body["openNow"] = True
-            if spec.min_rating:
-                # API accepts 0.5 increments.
-                body["minRating"] = math.floor(spec.min_rating * 2) / 2
-            if spec.max_price_level is not None and spec.max_price_level >= 1:
-                body["priceLevels"] = [_PRICE_REV[i] for i in range(1, spec.max_price_level + 1)]
-            data = await self._request("POST", f"{PLACES_BASE}/places:searchText", mask, body)
-        places = [_parse_place(p) for p in data.get("places", [])]
-        return [p for p in places if p is not None]
-
-    async def details(self, place_id: str) -> PlaceResult | None:
-        if not place_id or not all(c.isalnum() or c in "-_" for c in place_id):
-            return None
-        mask = ",".join(_PLACE_FIELDS + _DETAIL_EXTRA)
-        data = await self._request("GET", f"{PLACES_BASE}/places/{place_id}", mask)
-        return _parse_place(data)
-
-
-class MockPlacesProvider:
-    """Deterministic, obviously fictional results for local UI development and tests.
-
-    Names are prefixed with "[DEV MOCK]" and the frontend shows a banner, so they
-    can never be mistaken for real businesses.
-    """
-
-    name = "mock"
-
-    async def search(self, spec: SearchSpec) -> list[PlaceResult]:
-        seed = int(hashlib.sha256(f"{spec.query}|{spec.latitude:.4f}|{spec.longitude:.4f}".encode()).hexdigest()[:8], 16)
-        rng = random.Random(seed)
-        label = (spec.included_type or spec.query or "place").replace("_", " ").strip().title()[:40]
-        results: list[PlaceResult] = []
-        for i in range(min(spec.max_results, 8)):
-            dist_m = rng.uniform(150, spec.radius_m * 0.95)
-            bearing = rng.uniform(0, 2 * math.pi)
-            dlat = (dist_m * math.cos(bearing)) / 111_320
-            dlng = (dist_m * math.sin(bearing)) / (111_320 * math.cos(math.radians(spec.latitude)))
-            price = rng.choice([1, 1, 2, 2, 3, 4])
-            if spec.max_price_level is not None and price > spec.max_price_level:
-                price = spec.max_price_level
-            open_now = rng.random() > 0.25
-            if spec.open_now and not open_now:
-                continue
-            pid = f"mock-{seed % 100000}-{i}"
-            results.append(
-                PlaceResult(
-                    place_id=pid,
-                    name=f"[DEV MOCK] {label} #{i + 1}",
-                    category=label,
-                    types=[spec.included_type] if spec.included_type else [],
-                    address="Fictional address (mock data)",
-                    latitude=spec.latitude + dlat,
-                    longitude=spec.longitude + dlng,
-                    rating=round(rng.uniform(3.4, 4.8), 1),
-                    user_rating_count=rng.randint(15, 4000),
-                    price_level=price,
-                    open_now=open_now,
-                    summary="Mock result for development - not a real business.",
-                    maps_url=None,
-                    source="mock",
-                )
-            )
-        return results
-
-    async def details(self, place_id: str) -> PlaceResult | None:
-        return None
-
-
-class DisabledPlacesProvider:
-    name = "disabled"
-
-    async def search(self, spec: SearchSpec) -> list[PlaceResult]:
-        return []
-
-    async def details(self, place_id: str) -> PlaceResult | None:
-        return None
-
-
-_provider: PlacesProvider | None = None
-
-
-def get_places_provider() -> PlacesProvider:
-    global _provider
-    if _provider is None:
+    def __init__(self, client: httpx.AsyncClient | None = None) -> None:
         s = get_settings()
-        kind = s.resolved_places_provider
-        if kind == "google":
-            if not s.google_maps_api_key:
-                raise RuntimeError("PLACES_PROVIDER=google requires GOOGLE_MAPS_API_KEY")
-            _provider = GooglePlacesProvider(s)
-        elif kind == "mock":
-            _provider = MockPlacesProvider()
-        else:
-            _provider = DisabledPlacesProvider()
-        log.info("Places provider: %s", _provider.name)
-    return _provider
+        self._client = client or httpx.AsyncClient(
+            timeout=httpx.Timeout(s.discovery_timeout_seconds + 5, connect=5.0),
+            headers={"User-Agent": s.osm_user_agent, "Accept": "application/json"},
+        )
+        self._lock = asyncio.Lock()
+        self._last_request = 0.0
+
+    def build_query(self, spec: SearchSpec) -> str:
+        s = get_settings()
+        selectors = list(spec.category.osm) if spec.category else []
+        if spec.keyword:
+            selectors += list(keyword_selectors(spec.keyword))
+        if not selectors:
+            raise DiscoveryError("Nothing to search for.")
+        around = f"(around:{int(spec.radius_m)},{spec.latitude:.6f},{spec.longitude:.6f})"
+        body = "\n".join(f"  nwr{sel}{around};" for sel in selectors)
+        timeout = int(s.discovery_timeout_seconds)
+        return f"[out:json][timeout:{timeout}];\n(\n{body}\n);\nout center tags {spec.limit};"
+
+    async def search(self, spec: SearchSpec) -> list[RawPlace]:
+        query = self.build_query(spec)
+        async with self._lock:  # one request at a time (fair use)
+            wait = 1.0 - (time.monotonic() - self._last_request)
+            if wait > 0:
+                await asyncio.sleep(wait)
+            self._last_request = time.monotonic()
+            try:
+                resp = await self._client.post(get_settings().overpass_url, data={"data": query})
+            except httpx.HTTPError as exc:
+                raise DiscoveryError(f"Overpass unreachable ({type(exc).__name__})") from exc
+        if resp.status_code == 429:
+            raise DiscoveryError("Overpass rate limit reached")
+        if resp.status_code >= 400:
+            raise DiscoveryError(f"Overpass error {resp.status_code}")
+        try:
+            elements = resp.json().get("elements", [])
+        except ValueError as exc:
+            raise DiscoveryError("Overpass returned invalid JSON") from exc
+        return [p for p in (element_to_place(e, "osm") for e in elements) if p is not None]
 
 
-def set_places_provider(provider: PlacesProvider | None) -> None:
-    global _provider
-    _provider = provider
+def element_to_place(e: dict, source: str) -> RawPlace | None:
+    tags = e.get("tags") or {}
+    name = tags.get("name:en") or tags.get("name")
+    lat = e.get("lat", (e.get("center") or {}).get("lat"))
+    lon = e.get("lon", (e.get("center") or {}).get("lon"))
+    if not name or lat is None or lon is None:
+        return None
+    osm_id = f"{e['type']}/{e['id']}" if e.get("type") and e.get("id") else None
+    return RawPlace(osm_id=osm_id, name=str(name)[:200], lat=float(lat), lon=float(lon), tags=tags, source=source)
+
+
+# ------------------------------------------------------------------ local datasets
+class DatasetProvider:
+    """Searches a local JSON dataset with the same selectors as Overpass."""
+
+    def __init__(self, path: Path, source: str) -> None:
+        self.path = path
+        self.name = source
+        self._places: list[RawPlace] | None = None
+        self.meta: dict = {}
+
+    @property
+    def available(self) -> bool:
+        return self.path.is_file()
+
+    def _load(self) -> list[RawPlace]:
+        if self._places is None:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+            self.meta = {k: v for k, v in data.items() if k != "places"}
+            places = []
+            for item in data.get("places", []):
+                tags = dict(item.get("tags") or {})
+                if item.get("name") and not tags.get("name"):
+                    tags["name"] = item["name"]
+                p = element_to_place({"lat": item.get("lat"), "lon": item.get("lon"), "tags": tags}, self.name)
+                if p:
+                    p.osm_id = item.get("osm_id")
+                    places.append(p)
+            self._places = places
+        return self._places
+
+    async def search(self, spec: SearchSpec) -> list[RawPlace]:
+        if not self.available:
+            return []
+        places = await asyncio.to_thread(self._load)
+        kw_sel = keyword_selectors(spec.keyword) if spec.keyword else ()
+        out = []
+        for p in places:
+            if haversine_km(spec.latitude, spec.longitude, p.lat, p.lon) * 1000 > spec.radius_m:
+                continue
+            tags = {**p.tags, "name": p.name}
+            if (spec.category and matches_category(tags, spec.category)) or any(tags_match(tags, s) for s in kw_sel):
+                out.append(p)
+        return out[: spec.limit]
+
+
+_overpass: OverpassProvider | None = None
+_snapshot: DatasetProvider | None = None
+_sample: DatasetProvider | None = None
+
+
+def get_overpass() -> OverpassProvider:
+    global _overpass
+    if _overpass is None:
+        _overpass = OverpassProvider()
+    return _overpass
+
+
+def get_snapshot() -> DatasetProvider:
+    global _snapshot
+    if _snapshot is None:
+        s = get_settings()
+        # Prefer the copy in the persistent data volume (written by build_osm_snapshot).
+        path = s.data_path / "discovery" / "osm_snapshot.json"
+        if not path.is_file():
+            path = s.bundled_path / "discovery" / "osm_snapshot.json"
+        _snapshot = DatasetProvider(path, "osm_snapshot")
+    return _snapshot
+
+
+def get_sample() -> DatasetProvider:
+    global _sample
+    if _sample is None:
+        _sample = DatasetProvider(get_settings().bundled_path / "discovery" / "sample_places.json", "sample")
+    return _sample
+
+
+def set_providers(overpass=None, snapshot=None, sample=None) -> None:
+    """Override (tests). Pass None to reset to defaults."""
+    global _overpass, _snapshot, _sample
+    _overpass, _snapshot, _sample = overpass, snapshot, sample

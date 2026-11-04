@@ -70,20 +70,22 @@ def _decode(data: bytes) -> str:
 
 
 def _extract_pdf(data: bytes) -> list[Section]:
-    from pypdf import PdfReader
+    import pymupdf  # PyMuPDF
 
     try:
-        reader = PdfReader(io.BytesIO(data))
-        if reader.is_encrypted:
-            raise ExtractionError("Encrypted PDFs are not supported.")
-        pages = []
-        for i, page in enumerate(reader.pages, start=1):
-            txt = page.extract_text() or ""
-            if txt.strip():
-                pages.append(Section(title=f"Page {i}", text=txt))
+        with pymupdf.open(stream=data, filetype="pdf") as doc:
+            if doc.needs_pass:
+                raise ExtractionError("Password-protected PDFs are not supported.")
+            if doc.page_count > 500:
+                raise ExtractionError("PDF has too many pages (max 500).")
+            pages = []
+            for i, page in enumerate(doc, start=1):
+                txt = page.get_text("text") or ""
+                if txt.strip():
+                    pages.append(Section(title=f"Page {i}", text=txt))
     except ExtractionError:
         raise
-    except Exception as exc:  # pypdf raises many types
+    except Exception as exc:  # malformed / unsupported PDFs
         raise ExtractionError(f"Could not read PDF: {type(exc).__name__}") from exc
     if not pages:
         raise ExtractionError("PDF contains no extractable text (it may be a scanned image).")

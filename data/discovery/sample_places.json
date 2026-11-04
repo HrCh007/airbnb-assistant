@@ -1,0 +1,1062 @@
+{
+ "_comment": "FICTIONAL development data. None of these businesses exist. Used only when live OpenStreetMap search and the OSM snapshot are unavailable. Disable with DISCOVERY_SAMPLE_DATA=false.",
+ "source": "sample",
+ "places": [
+  {
+   "osm_id": null,
+   "name": "[Sample] Spice Route Kitchen (Dwarka)",
+   "lat": 28.588851,
+   "lon": 77.051921,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "north_indian",
+    "opening_hours": "Mo-Su 12:00-23:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Tandoor House (Dwarka)",
+   "lat": 28.581968,
+   "lon": 77.038789,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "indian;mughlai",
+    "opening_hours": "Mo-Su 11:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Dosa Corner (Dwarka)",
+   "lat": 28.595742,
+   "lon": 77.039363,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "south_indian",
+    "diet:vegetarian": "only",
+    "opening_hours": "Mo-Su 07:30-22:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Dragon Bowl (Dwarka)",
+   "lat": 28.608222,
+   "lon": 77.062532,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "chinese",
+    "opening_hours": "Mo-Su 12:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Family Feast Restaurant (Dwarka)",
+   "lat": 28.57685,
+   "lon": 77.051643,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "indian",
+    "diet:vegetarian": "yes",
+    "opening_hours": "Mo-Su 11:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Highway Dhaba (Dwarka)",
+   "lat": 28.589012,
+   "lon": 77.020976,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "punjabi",
+    "opening_hours": "24/7",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Quick Bite Rolls (Dwarka)",
+   "lat": 28.595125,
+   "lon": 77.045516,
+   "tags": {
+    "amenity": "fast_food",
+    "cuisine": "indian",
+    "opening_hours": "Mo-Su 11:00-01:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Momo Point (Dwarka)",
+   "lat": 28.593178,
+   "lon": 77.054738,
+   "tags": {
+    "amenity": "fast_food",
+    "cuisine": "momo;tibetan",
+    "opening_hours": "Mo-Su 15:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Chaat Junction (Dwarka)",
+   "lat": 28.581731,
+   "lon": 77.045588,
+   "tags": {
+    "amenity": "fast_food",
+    "cuisine": "chaat;indian",
+    "diet:vegetarian": "only",
+    "opening_hours": "Mo-Su 16:00-22:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Brew & Books Cafe (Dwarka)",
+   "lat": 28.589896,
+   "lon": 77.04128,
+   "tags": {
+    "amenity": "cafe",
+    "cuisine": "coffee_shop",
+    "internet_access": "wlan",
+    "opening_hours": "Mo-Su 08:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Chai Tapri (Dwarka)",
+   "lat": 28.590567,
+   "lon": 77.047939,
+   "tags": {
+    "amenity": "cafe",
+    "cuisine": "tea",
+    "opening_hours": "Mo-Su 07:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Sweet Crumbs Bakery (Dwarka)",
+   "lat": 28.599763,
+   "lon": 77.049526,
+   "tags": {
+    "shop": "bakery",
+    "opening_hours": "Mo-Su 09:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Skyline Lounge (Dwarka)",
+   "lat": 28.57707,
+   "lon": 77.057116,
+   "tags": {
+    "amenity": "bar",
+    "opening_hours": "Mo-Su 17:00-01:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Hops Brewhouse (Dwarka)",
+   "lat": 28.599773,
+   "lon": 77.024372,
+   "tags": {
+    "amenity": "pub",
+    "microbrewery": "yes",
+    "sport": "cricket",
+    "opening_hours": "Mo-Su 12:00-00:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Pulse Nightclub (Dwarka)",
+   "lat": 28.602137,
+   "lon": 77.067499,
+   "tags": {
+    "amenity": "nightclub",
+    "opening_hours": "Th-Su 21:00-03:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Reel Cinemas (Dwarka)",
+   "lat": 28.612167,
+   "lon": 77.033848,
+   "tags": {
+    "amenity": "cinema",
+    "opening_hours": "Mo-Su 09:00-01:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Galaxy Mall (Dwarka)",
+   "lat": 28.574609,
+   "lon": 77.037952,
+   "tags": {
+    "shop": "mall",
+    "opening_hours": "Mo-Su 10:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Daily Needs Supermarket (Dwarka)",
+   "lat": 28.594954,
+   "lon": 77.048927,
+   "tags": {
+    "shop": "supermarket",
+    "opening_hours": "Mo-Su 08:00-22:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Weekly Market (Dwarka)",
+   "lat": 28.588382,
+   "lon": 77.056482,
+   "tags": {
+    "amenity": "marketplace",
+    "opening_hours": "Tu 16:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Green Leaf Park (Dwarka)",
+   "lat": 28.592316,
+   "lon": 77.038945,
+   "tags": {
+    "leisure": "park",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Heritage Step Well (Dwarka)",
+   "lat": 28.559132,
+   "lon": 77.047968,
+   "tags": {
+    "historic": "monument",
+    "tourism": "attraction",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] City Care Pharmacy (Dwarka)",
+   "lat": 28.58988,
+   "lon": 77.043724,
+   "tags": {
+    "amenity": "pharmacy",
+    "opening_hours": "24/7",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] LifeLine Hospital (Dwarka)",
+   "lat": 28.60431,
+   "lon": 77.046486,
+   "tags": {
+    "amenity": "hospital",
+    "emergency": "yes",
+    "opening_hours": "24/7",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Wellness Clinic (Dwarka)",
+   "lat": 28.586402,
+   "lon": 77.05107,
+   "tags": {
+    "amenity": "clinic",
+    "opening_hours": "Mo-Sa 09:00-20:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Metro Bank ATM (Dwarka)",
+   "lat": 28.593678,
+   "lon": 77.044004,
+   "tags": {
+    "amenity": "atm",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] FitZone Gym (Dwarka)",
+   "lat": 28.589595,
+   "lon": 77.037219,
+   "tags": {
+    "leisure": "fitness_centre",
+    "opening_hours": "Mo-Sa 06:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Fresh Press Laundry (Dwarka)",
+   "lat": 28.588469,
+   "lon": 77.047344,
+   "tags": {
+    "shop": "laundry",
+    "opening_hours": "Mo-Sa 09:00-20:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Fuel Stop Petrol Pump (Dwarka)",
+   "lat": 28.591451,
+   "lon": 77.067165,
+   "tags": {
+    "amenity": "fuel",
+    "opening_hours": "24/7",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "dwarka"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Spice Route Kitchen (Janakpuri)",
+   "lat": 28.616394,
+   "lon": 77.08857,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "north_indian",
+    "opening_hours": "Mo-Su 12:00-23:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Tandoor House (Janakpuri)",
+   "lat": 28.620597,
+   "lon": 77.075713,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "indian;mughlai",
+    "opening_hours": "Mo-Su 11:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Dosa Corner (Janakpuri)",
+   "lat": 28.631128,
+   "lon": 77.086509,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "south_indian",
+    "diet:vegetarian": "only",
+    "opening_hours": "Mo-Su 07:30-22:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Dragon Bowl (Janakpuri)",
+   "lat": 28.620863,
+   "lon": 77.110334,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "chinese",
+    "opening_hours": "Mo-Su 12:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Family Feast Restaurant (Janakpuri)",
+   "lat": 28.609733,
+   "lon": 77.078799,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "indian",
+    "diet:vegetarian": "yes",
+    "opening_hours": "Mo-Su 11:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Highway Dhaba (Janakpuri)",
+   "lat": 28.635439,
+   "lon": 77.071259,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "punjabi",
+    "opening_hours": "24/7",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Quick Bite Rolls (Janakpuri)",
+   "lat": 28.624922,
+   "lon": 77.09101,
+   "tags": {
+    "amenity": "fast_food",
+    "cuisine": "indian",
+    "opening_hours": "Mo-Su 11:00-01:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Momo Point (Janakpuri)",
+   "lat": 28.617075,
+   "lon": 77.093694,
+   "tags": {
+    "amenity": "fast_food",
+    "cuisine": "momo;tibetan",
+    "opening_hours": "Mo-Su 15:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Chaat Junction (Janakpuri)",
+   "lat": 28.616251,
+   "lon": 77.079259,
+   "tags": {
+    "amenity": "fast_food",
+    "cuisine": "chaat;indian",
+    "diet:vegetarian": "only",
+    "opening_hours": "Mo-Su 16:00-22:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Brew & Books Cafe (Janakpuri)",
+   "lat": 28.623541,
+   "lon": 77.083396,
+   "tags": {
+    "amenity": "cafe",
+    "cuisine": "coffee_shop",
+    "internet_access": "wlan",
+    "opening_hours": "Mo-Su 08:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Chai Tapri (Janakpuri)",
+   "lat": 28.618805,
+   "lon": 77.087615,
+   "tags": {
+    "amenity": "cafe",
+    "cuisine": "tea",
+    "opening_hours": "Mo-Su 07:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Sweet Crumbs Bakery (Janakpuri)",
+   "lat": 28.624106,
+   "lon": 77.096021,
+   "tags": {
+    "shop": "bakery",
+    "opening_hours": "Mo-Su 09:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Skyline Lounge (Janakpuri)",
+   "lat": 28.606479,
+   "lon": 77.082092,
+   "tags": {
+    "amenity": "bar",
+    "opening_hours": "Mo-Su 17:00-01:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Hops Brewhouse (Janakpuri)",
+   "lat": 28.639425,
+   "lon": 77.081696,
+   "tags": {
+    "amenity": "pub",
+    "microbrewery": "yes",
+    "sport": "cricket",
+    "opening_hours": "Mo-Su 12:00-00:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Pulse Nightclub (Janakpuri)",
+   "lat": 28.610598,
+   "lon": 77.118133,
+   "tags": {
+    "amenity": "nightclub",
+    "opening_hours": "Th-Su 21:00-03:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Reel Cinemas (Janakpuri)",
+   "lat": 28.641001,
+   "lon": 77.097037,
+   "tags": {
+    "amenity": "cinema",
+    "opening_hours": "Mo-Su 09:00-01:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Galaxy Mall (Janakpuri)",
+   "lat": 28.61691,
+   "lon": 77.069206,
+   "tags": {
+    "shop": "mall",
+    "opening_hours": "Mo-Su 10:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Daily Needs Supermarket (Janakpuri)",
+   "lat": 28.62172,
+   "lon": 77.091709,
+   "tags": {
+    "shop": "supermarket",
+    "opening_hours": "Mo-Su 08:00-22:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Weekly Market (Janakpuri)",
+   "lat": 28.609057,
+   "lon": 77.092273,
+   "tags": {
+    "amenity": "marketplace",
+    "opening_hours": "Tu 16:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Green Leaf Park (Janakpuri)",
+   "lat": 28.62642,
+   "lon": 77.08392,
+   "tags": {
+    "leisure": "park",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Heritage Step Well (Janakpuri)",
+   "lat": 28.601914,
+   "lon": 77.062513,
+   "tags": {
+    "historic": "monument",
+    "tourism": "attraction",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] City Care Pharmacy (Janakpuri)",
+   "lat": 28.62204,
+   "lon": 77.08476,
+   "tags": {
+    "amenity": "pharmacy",
+    "opening_hours": "24/7",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] LifeLine Hospital (Janakpuri)",
+   "lat": 28.631847,
+   "lon": 77.102838,
+   "tags": {
+    "amenity": "hospital",
+    "emergency": "yes",
+    "opening_hours": "24/7",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Wellness Clinic (Janakpuri)",
+   "lat": 28.615467,
+   "lon": 77.086108,
+   "tags": {
+    "amenity": "clinic",
+    "opening_hours": "Mo-Sa 09:00-20:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Metro Bank ATM (Janakpuri)",
+   "lat": 28.624031,
+   "lon": 77.087927,
+   "tags": {
+    "amenity": "atm",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] FitZone Gym (Janakpuri)",
+   "lat": 28.625851,
+   "lon": 77.080869,
+   "tags": {
+    "leisure": "fitness_centre",
+    "opening_hours": "Mo-Sa 06:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Fresh Press Laundry (Janakpuri)",
+   "lat": 28.617568,
+   "lon": 77.084595,
+   "tags": {
+    "shop": "laundry",
+    "opening_hours": "Mo-Sa 09:00-20:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Fuel Stop Petrol Pump (Janakpuri)",
+   "lat": 28.608341,
+   "lon": 77.09944,
+   "tags": {
+    "amenity": "fuel",
+    "opening_hours": "24/7",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "janakpuri"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Spice Route Kitchen (Saket)",
+   "lat": 28.523064,
+   "lon": 77.212698,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "north_indian",
+    "opening_hours": "Mo-Su 12:00-23:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Tandoor House (Saket)",
+   "lat": 28.514174,
+   "lon": 77.203451,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "indian;mughlai",
+    "opening_hours": "Mo-Su 11:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Dosa Corner (Saket)",
+   "lat": 28.526906,
+   "lon": 77.196379,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "south_indian",
+    "diet:vegetarian": "only",
+    "opening_hours": "Mo-Su 07:30-22:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Dragon Bowl (Saket)",
+   "lat": 28.542452,
+   "lon": 77.216128,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "chinese",
+    "opening_hours": "Mo-Su 12:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Family Feast Restaurant (Saket)",
+   "lat": 28.512616,
+   "lon": 77.216071,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "indian",
+    "diet:vegetarian": "yes",
+    "opening_hours": "Mo-Su 11:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Highway Dhaba (Saket)",
+   "lat": 28.51611,
+   "lon": 77.186122,
+   "tags": {
+    "amenity": "restaurant",
+    "cuisine": "punjabi",
+    "opening_hours": "24/7",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Quick Bite Rolls (Saket)",
+   "lat": 28.528245,
+   "lon": 77.204612,
+   "tags": {
+    "amenity": "fast_food",
+    "cuisine": "indian",
+    "opening_hours": "Mo-Su 11:00-01:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Momo Point (Saket)",
+   "lat": 28.52749,
+   "lon": 77.213897,
+   "tags": {
+    "amenity": "fast_food",
+    "cuisine": "momo;tibetan",
+    "opening_hours": "Mo-Su 15:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Chaat Junction (Saket)",
+   "lat": 28.515433,
+   "lon": 77.209365,
+   "tags": {
+    "amenity": "fast_food",
+    "cuisine": "chaat;indian",
+    "diet:vegetarian": "only",
+    "opening_hours": "Mo-Su 16:00-22:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Brew & Books Cafe (Saket)",
+   "lat": 28.52153,
+   "lon": 77.20322,
+   "tags": {
+    "amenity": "cafe",
+    "cuisine": "coffee_shop",
+    "internet_access": "wlan",
+    "opening_hours": "Mo-Su 08:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Chai Tapri (Saket)",
+   "lat": 28.52319,
+   "lon": 77.209797,
+   "tags": {
+    "amenity": "cafe",
+    "cuisine": "tea",
+    "opening_hours": "Mo-Su 07:00-23:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Sweet Crumbs Bakery (Saket)",
+   "lat": 28.532017,
+   "lon": 77.207349,
+   "tags": {
+    "shop": "bakery",
+    "opening_hours": "Mo-Su 09:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Skyline Lounge (Saket)",
+   "lat": 28.514078,
+   "lon": 77.220737,
+   "tags": {
+    "amenity": "bar",
+    "opening_hours": "Mo-Su 17:00-01:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Hops Brewhouse (Saket)",
+   "lat": 28.526097,
+   "lon": 77.185822,
+   "tags": {
+    "amenity": "pub",
+    "microbrewery": "yes",
+    "sport": "cricket",
+    "opening_hours": "Mo-Su 12:00-00:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Pulse Nightclub (Saket)",
+   "lat": 28.544954,
+   "lon": 77.229879,
+   "tags": {
+    "amenity": "nightclub",
+    "opening_hours": "Th-Su 21:00-03:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Reel Cinemas (Saket)",
+   "lat": 28.539173,
+   "lon": 77.1899,
+   "tags": {
+    "amenity": "cinema",
+    "opening_hours": "Mo-Su 09:00-01:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Galaxy Mall (Saket)",
+   "lat": 28.507497,
+   "lon": 77.204907,
+   "tags": {
+    "shop": "mall",
+    "opening_hours": "Mo-Su 10:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Daily Needs Supermarket (Saket)",
+   "lat": 28.527614,
+   "lon": 77.208253,
+   "tags": {
+    "shop": "supermarket",
+    "opening_hours": "Mo-Su 08:00-22:30",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Weekly Market (Saket)",
+   "lat": 28.52333,
+   "lon": 77.221827,
+   "tags": {
+    "amenity": "marketplace",
+    "opening_hours": "Tu 16:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Green Leaf Park (Saket)",
+   "lat": 28.523035,
+   "lon": 77.200378,
+   "tags": {
+    "leisure": "park",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Heritage Step Well (Saket)",
+   "lat": 28.496432,
+   "lon": 77.218227,
+   "tags": {
+    "historic": "monument",
+    "tourism": "attraction",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] City Care Pharmacy (Saket)",
+   "lat": 28.522078,
+   "lon": 77.205315,
+   "tags": {
+    "amenity": "pharmacy",
+    "opening_hours": "24/7",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] LifeLine Hospital (Saket)",
+   "lat": 28.540466,
+   "lon": 77.201731,
+   "tags": {
+    "amenity": "hospital",
+    "emergency": "yes",
+    "opening_hours": "24/7",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Wellness Clinic (Saket)",
+   "lat": 28.520713,
+   "lon": 77.212756,
+   "tags": {
+    "amenity": "clinic",
+    "opening_hours": "Mo-Sa 09:00-20:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Metro Bank ATM (Saket)",
+   "lat": 28.525402,
+   "lon": 77.204399,
+   "tags": {
+    "amenity": "atm",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] FitZone Gym (Saket)",
+   "lat": 28.520339,
+   "lon": 77.199837,
+   "tags": {
+    "leisure": "fitness_centre",
+    "opening_hours": "Mo-Sa 06:00-22:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Fresh Press Laundry (Saket)",
+   "lat": 28.520269,
+   "lon": 77.209972,
+   "tags": {
+    "shop": "laundry",
+    "opening_hours": "Mo-Sa 09:00-20:00",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  },
+  {
+   "osm_id": null,
+   "name": "[Sample] Fuel Stop Petrol Pump (Saket)",
+   "lat": 28.528894,
+   "lon": 77.225265,
+   "tags": {
+    "amenity": "fuel",
+    "opening_hours": "24/7",
+    "sample_note": "FICTIONAL sample place for development - not a real business."
+   },
+   "location": "saket"
+  }
+ ]
+}

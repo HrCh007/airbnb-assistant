@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, guestApi, streamChat } from "@/services/api";
 import type { ChatMessage, Intent, Location, Place, ServiceStatus, Session } from "@/types";
 
-const SESSION_KEY = "dsa_session";
+const SESSION_KEY = "hs_session";
 
 type Stored = { id: string; token: string };
 
@@ -152,6 +152,10 @@ export function useChat() {
               case "token":
                 patch((m) => ({ ...m, content: m.content + (data as string), pending: false }));
                 break;
+              case "replace":
+                // The streamed answer failed fact verification; show the checked version.
+                patch((m) => ({ ...m, content: data as string, pending: false }));
+                break;
               case "places": {
                 const d = data as { previous: boolean; items: Place[] };
                 patch((m) => ({ ...m, places: d.items, placesPrevious: d.previous }));
@@ -208,6 +212,18 @@ export function useChat() {
     setMessages([]);
   }, [session]);
 
+  const setRadius = useCallback(
+    async (km: number | null) => {
+      try {
+        const { id, token } = await ensureSession();
+        setSession(await guestApi.setPreferences(id, token, { max_distance_km: km }));
+      } catch {
+        setError("Couldn't update the search radius.");
+      }
+    },
+    [ensureSession],
+  );
+
   const verifyPin = useCallback(
     async (pin: string) => {
       if (!session || !tokenRef.current) return false;
@@ -239,5 +255,6 @@ export function useChat() {
     selectProperty,
     changeLocation,
     verifyPin,
+    setRadius,
   };
 }

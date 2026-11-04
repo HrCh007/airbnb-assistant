@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, MapPin, Save } from "lucide-react";
 import { adminApi, ApiError } from "@/services/api";
 import type { Location, PropertyAdmin, PropertyDetails } from "@/types";
 import { btnPrimary, card, input, label } from "./AdminShell";
@@ -120,6 +120,50 @@ function toForm(p?: PropertyAdmin | null): Form {
   };
 }
 
+function GeocodeHelper({ address, onPick }: { address: string; onPick: (lat: number, lng: number) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [results, setResults] = useState<{ display_name: string; latitude: number; longitude: number }[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="mb-4">
+      <button
+        type="button"
+        className="inline-flex items-center gap-1.5 rounded-xl border border-sand-200 bg-white px-3 py-1.5 text-sm font-medium text-ink hover:bg-sand-50 disabled:opacity-50"
+        disabled={busy || address.trim().length < 5}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            const r = await adminApi.geocode(address);
+            setResults(r.results);
+            if (!r.results.length) setError("No match found. Try a shorter address (area, city).");
+          } catch (e) {
+            setError(e instanceof ApiError ? e.message : "Lookup failed.");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? <Loader2 className="size-4 animate-spin" /> : <MapPin className="size-4" />} Find from address
+      </button>
+      {error && <p className="mt-2 text-xs text-terracotta-700">{error}</p>}
+      {results && results.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {results.map((r) => (
+            <li key={`${r.latitude},${r.longitude}`}>
+              <button type="button" onClick={() => { onPick(r.latitude, r.longitude); setResults(null); }}
+                className="w-full rounded-lg px-2 py-1 text-left text-xs text-ink-soft hover:bg-sand-50">
+                {r.display_name} <span className="text-ink-muted">({r.latitude.toFixed(5)}, {r.longitude.toFixed(5)})</span>
+              </button>
+            </li>
+          ))}
+          <li className="px-2 text-[10px] text-ink-muted">Results © OpenStreetMap contributors — check the pin is the right building.</li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
 const num = (v: string) => (v.trim() === "" ? null : Number(v));
 
 export function PropertyForm({ property, onSaved }: { property?: PropertyAdmin | null; onSaved: (p: PropertyAdmin) => void }) {
@@ -226,8 +270,10 @@ export function PropertyForm({ property, onSaved }: { property?: PropertyAdmin |
       <section className={card}>
         <h2 className="font-display text-lg font-semibold">Location intelligence</h2>
         <p className="mt-1 mb-4 text-sm text-ink-soft">
-          Use the property&apos;s exact coordinates (right-click the building in Google Maps → copy the numbers). Local search and distances are measured from here.
+          Use the property&apos;s exact coordinates. Local search and distances are measured from here. Click
+          <em> Find from address</em> (OpenStreetMap), or right-click the building on any map and copy its coordinates.
         </p>
+        <GeocodeHelper address={form.address} onPick={(lat, lng) => setForm((f) => ({ ...f, latitude: String(lat), longitude: String(lng) }))} />
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <label className={label} htmlFor="lat">Latitude</label>

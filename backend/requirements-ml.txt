@@ -1,0 +1,2 @@
+# Local embedding model (installed after a CPU-only PyTorch, see backend/Dockerfile).
+sentence-transformers==6.2.0

@@ -1,5 +1,6 @@
-"""Build the grounded context block for Claude, and compose deterministic
-answers when Claude is not configured or unavailable (offline mode).
+"""Build the grounded context block for the local LLM, compose deterministic
+(extractive) answers when the LLM isn't needed or isn't available, and verify
+LLM answers against the retrieved facts.
 
 Offline answers are extractive: they only repeat retrieved knowledge-base text
 and provider-returned place data, so they cannot hallucinate.
@@ -40,16 +41,20 @@ def place_line(p: PlaceResult, previously_shown: bool = False) -> str:
     fields = [f"name: {p.name}", f"source: {p.source}"]
     if p.category:
         fields.append(f"category: {p.category}")
+    if p.cuisine:
+        fields.append(f"cuisine: {p.cuisine}")
     if p.distance_km is not None:
         fields.append(f"distance_from_property: {format_distance(p.distance_km)}")
-    if p.rating is not None:
-        fields.append(f"rating: {p.rating}/5" + (f" ({p.user_rating_count} reviews)" if p.user_rating_count else ""))
-    if p.price_level is not None:
-        fields.append(f"price_level: {'₹' * max(p.price_level, 1)} ({p.price_level}/4)")
+    if p.opening_hours:
+        fields.append(f"opening_hours: {p.opening_hours}")
     if p.open_now is not None:
         fields.append(f"open_now: {'yes' if p.open_now else 'no'}")
-    if p.opening_hours:
-        fields.append("hours: " + "; ".join(p.opening_hours[:7]))
+    if p.price_note:
+        fields.append(f"price: {p.price_note}")
+    elif p.price_level is not None:
+        fields.append(f"price_level: {'₹' * p.price_level} (host estimate)")
+    if p.diet:
+        fields.append(f"diet: {p.diet}")
     if p.address:
         fields.append(f"address: {p.address}")
     if p.summary:
@@ -181,8 +186,11 @@ def _best_lines(question: str, retrieval: RetrievalResult, max_lines: int = 6) -
 
 
 def offline_property_answer(question: str, retrieval: RetrievalResult | None) -> str:
+    if retrieval is not None and retrieval.withheld_sensitive:
+        # A sensitive fact (password/code) was the best match but the PIN isn't verified.
+        return PIN_REQUIRED
     if retrieval is None or not retrieval.chunks or not topic_covered(question, retrieval):
-        return PIN_REQUIRED if retrieval and retrieval.withheld_sensitive else NOT_FOUND
+        return NOT_FOUND
     lines = _best_lines(question, retrieval)
     if not lines:
         return PIN_REQUIRED if retrieval.withheld_sensitive else NOT_FOUND
@@ -190,28 +198,70 @@ def offline_property_answer(question: str, retrieval: RetrievalResult | None) ->
     return f"Here's what your property guide says:\n\n{body}"
 
 
+_SOURCE_LABEL = {"host_curated": "Host pick: ", "sample": "", "osm": "", "osm_snapshot": ""}
+
+
 def offline_places_answer(places: list[PlaceResult], notices: list[str], previous: bool, property_name: str) -> str:
     if not places:
         return " ".join(notices) or "I couldn't find matching places nearby right now."
-    intro = (
-        "Here are the places I showed you earlier:" if previous else f"Here are some options near {property_name}:"
-    )
+    intro = "Here are the places I showed you earlier:" if previous else f"Here are some options near {property_name}:"
     lines = []
     for i, p in enumerate(places, 1):
         bits = []
         if p.distance_km is not None:
             bits.append(f"{format_distance(p.distance_km)} away")
-        if p.rating is not None:
-            bits.append(f"rated {p.rating}/5")
+        if p.cuisine:
+            bits.append(p.cuisine)
+        elif p.category:
+            bits.append(p.category)
         if p.open_now is not None:
-            bits.append("open now" if p.open_now else "currently closed")
-        prefix = "Host pick: " if p.source == "host_curated" else ""
-        line = f"{i}. **{prefix}{p.name}**" + (f" — {', '.join(bits)}" if bits else "")
+            bits.append("open now" if p.open_now else "closed right now")
+        if p.price_note:
+            bits.append("budget-friendly")
+        if p.diet:
+            bits.append(p.diet.lower())
+        line = f"{i}. **{_SOURCE_LABEL.get(p.source, '')}{p.name}**" + (f" — {', '.join(bits)}" if bits else "")
         if p.host_note:
             line += f"\n   _{p.host_note}_"
         lines.append(line)
     tail = ("\n\n" + " ".join(notices)) if notices else ""
     return f"{intro}\n\n" + "\n".join(lines) + tail
+
+
+# ----------------------------------------------------------------------------- answer verification
+
+# Concrete facts a small model might invent: times, codes, phone numbers, distances.
+_FACT = re.compile(r"\+?\d[\d\-:.]{1,}\d(?:\s?(?:AM|PM|km|m)\b)?|\b\d{3,}\b|[a-z]+-[a-z]+-\d+|\b[A-Z]-\d+\b", re.I)
+_SAFE_NUMBERS = {"112", "102", "108", "100", "101", "1", "2", "3", "4", "5", "10"}
+
+
+def _norm(t: str) -> str:
+    return re.sub(r"[^a-z0-9:]", "", t.lower())
+
+
+def unsupported_facts(answer: str, context: str) -> list[str]:
+    """Fact-like tokens in `answer` that don't appear in `context`."""
+    ctx = _norm(context)
+    out = []
+    for tok in {m.group(0).strip().rstrip(".") for m in _FACT.finditer(answer)}:
+        if tok in _SAFE_NUMBERS or len(_norm(tok)) < 2:
+            continue
+        if _norm(tok) not in ctx:
+            out.append(tok)
+    return out
+
+
+def unknown_place_names(answer: str, places: list[PlaceResult]) -> list[str]:
+    """Bold names (**X**) in the answer that aren't any of the listed places."""
+    known = [_norm(p.name) for p in places]
+    bad = []
+    for name in re.findall(r"\*\*([^*]{3,80})\*\*", answer):
+        n = _norm(re.sub(r"^(host pick:)\s*", "", name, flags=re.I))
+        if len(n) < 4:
+            continue
+        if not any(n in k or k in n for k in known):
+            bad.append(name)
+    return bad
 
 
 def offline_answer(
