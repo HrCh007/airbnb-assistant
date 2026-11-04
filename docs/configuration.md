@@ -24,10 +24,10 @@ All settings are optional. Put overrides in `.env` next to `docker-compose.yml` 
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `900` / `150` | Characters per chunk / overlap |
 | `RETRIEVAL_TOP_K` | `6` | Chunks given to the model |
 | `DISCOVERY_LIVE` | `true` | Live OpenStreetMap (Overpass) searches |
-| `OVERPASS_URL` | `https://overpass-api.de/api/interpreter` | Any public or self-hosted Overpass instance |
+| `OVERPASS_URLS` | overpass-api.de, overpass.private.coffee, overpass.kumi.systems | Comma-separated Overpass servers, tried in order until one answers |
 | `NOMINATIM_URL` | `https://nominatim.openstreetmap.org` | Geocoding in the admin console |
 | `OSM_USER_AGENT` | generic | **Set your business name and email** (OSM usage policy) |
-| `DISCOVERY_SAMPLE_DATA` | `true` | Fictional sample places as the last fallback |
+| `DISCOVERY_SAMPLE_DATA` | `false` | Fictional sample places as the last fallback (demo only) |
 | `DEFAULT_DISCOVERY_RADIUS_M` | `3000` | Used when a property has no radius set |
 | `ALLOWED_RADII_KM` | `1,3,5,10` | Radius chips shown to guests |
 | `DISCOVERY_CACHE_TTL_SECONDS` | `3600` | Cache for live results |

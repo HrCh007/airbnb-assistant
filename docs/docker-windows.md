@@ -160,6 +160,6 @@ docker compose exec backend python -m scripts.build_osm_snapshot
 | Yellow notice "model is still downloading" stays | Check `docker compose logs ollama-pull`; retry with `docker compose run --rm ollama-pull` |
 | Answers are very slow | Use a smaller model (`OLLAMA_MODEL=qwen3:0.6b`) or give Docker more memory/CPUs |
 | Ollama container restarts / out of memory | Smaller model, or more memory in `.wslconfig` |
-| "Live map search is unavailable" | Overpass is busy or you're offline: the app falls back automatically; build a snapshot for real offline data |
+| Places say "Live map search didn't respond" (or show "Sample · fictional") | Run `docker compose exec backend python -m scripts.check_discovery` to see what each OpenStreetMap server returned. The dashboard also shows the last error. Public Overpass servers are sometimes busy: try again, add another server in `OVERPASS_URLS`, and build a snapshot (`python -m scripts.build_osm_snapshot`) while it works |
 | Want to start completely fresh | `docker compose down -v` (deletes all data and the downloaded model) |
 | Backend unhealthy | `docker compose logs backend`; usually ChromaDB not ready yet; `docker compose restart backend` |

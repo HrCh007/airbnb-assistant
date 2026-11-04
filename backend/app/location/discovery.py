@@ -186,10 +186,11 @@ async def _fetch(spec: SearchSpec, cache_key: str) -> tuple[list[RawPlace], str,
             _cache[key] = (time.monotonic(), places)
             return places, "osm", None, False
         except DiscoveryError as exc:
-            log.warning("Live OSM search failed: %s - using local data", exc)
+            log.warning("Live OSM search failed on every server: %s", exc)
             _live_down_until = time.monotonic() + s.discovery_failure_cooldown_seconds
             error = True
-            notice = "Live map search (OpenStreetMap) is unavailable right now, so I'm using locally saved data."
+            notice = ("Live map search (OpenStreetMap) didn't respond just now, so I can't look up current places. "
+                      "Please try again in a minute.")
     snapshot = get_snapshot()
     if snapshot.available:
         places = await snapshot.search(spec)
@@ -199,8 +200,10 @@ async def _fetch(spec: SearchSpec, cache_key: str) -> tuple[list[RawPlace], str,
     if s.discovery_sample_data:
         places = await get_sample().search(spec)
         sample_note = "These are FICTIONAL sample places for testing, not real businesses."
+        if notice:
+            notice = notice.replace("so I can't look up current places. Please try again in a minute.", "so I'm showing sample data.")
         return places, "sample", (f"{notice} {sample_note}" if notice else sample_note), error
-    return [], "none", (notice or "Live map search is turned off and no local map data is available."), error
+    return [], "none", (notice or "Live map search is turned off and no saved map data is available."), error
 
 
 async def discover(db: AsyncSession, prop: Property, req: DiscoveryRequest) -> DiscoveryResult:

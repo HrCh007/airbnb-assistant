@@ -81,10 +81,10 @@ class OverpassProvider:
         s = get_settings()
         self._client = client or httpx.AsyncClient(
             timeout=httpx.Timeout(s.discovery_timeout_seconds + 5, connect=5.0),
-            headers={"User-Agent": s.osm_user_agent, "Accept": "application/json"},
+            headers={"User-Agent": s.osm_user_agent},
         )
         self._lock = asyncio.Lock()
-        self._last_request = 0.0
+        self._last_request: dict[str, float] = {}  # per server: at most 1 request/second
 
     def build_query(self, spec: SearchSpec) -> str:
         s = get_settings()
@@ -98,26 +98,79 @@ class OverpassProvider:
         timeout = int(s.discovery_timeout_seconds)
         return f"[out:json][timeout:{timeout}];\n(\n{body}\n);\nout center tags {spec.limit};"
 
-    async def search(self, spec: SearchSpec) -> list[RawPlace]:
-        query = self.build_query(spec)
-        async with self._lock:  # one request at a time (fair use)
-            wait = 1.0 - (time.monotonic() - self._last_request)
-            if wait > 0:
-                await asyncio.sleep(wait)
-            self._last_request = time.monotonic()
-            try:
-                resp = await self._client.post(get_settings().overpass_url, data={"data": query})
-            except httpx.HTTPError as exc:
-                raise DiscoveryError(f"Overpass unreachable ({type(exc).__name__})") from exc
-        if resp.status_code == 429:
-            raise DiscoveryError("Overpass rate limit reached")
-        if resp.status_code >= 400:
-            raise DiscoveryError(f"Overpass error {resp.status_code}")
+    async def _query(self, url: str, query: str) -> list[dict]:
         try:
-            elements = resp.json().get("elements", [])
+            resp = await self._client.post(url, data={"data": query})
+        except httpx.TimeoutException as exc:
+            raise DiscoveryError(f"{_host(url)}: timed out") from exc
+        except httpx.HTTPError as exc:
+            raise DiscoveryError(f"{_host(url)}: unreachable ({type(exc).__name__}: {str(exc)[:120]})") from exc
+        if resp.status_code >= 400:
+            raise DiscoveryError(f"{_host(url)}: HTTP {resp.status_code} {_remark(resp.text)}".strip())
+        try:
+            data = resp.json()
         except ValueError as exc:
-            raise DiscoveryError("Overpass returned invalid JSON") from exc
-        return [p for p in (element_to_place(e, "osm") for e in elements) if p is not None]
+            raise DiscoveryError(f"{_host(url)}: not JSON ({_remark(resp.text)})") from exc
+        if data.get("remark") and "runtime error" in str(data["remark"]).lower():
+            raise DiscoveryError(f"{_host(url)}: {str(data['remark'])[:160]}")
+        return data.get("elements", [])
+
+    async def search(self, spec: SearchSpec) -> list[RawPlace]:
+        """Try each configured Overpass server in turn; raise with every reason if all fail."""
+        query = self.build_query(spec)
+        errors: list[str] = []
+        async with self._lock:  # one request at a time (fair use)
+            for url in get_settings().overpass_endpoints:
+                wait = 1.0 - (time.monotonic() - self._last_request.get(url, 0.0))
+                if wait > 0:
+                    await asyncio.sleep(wait)
+                self._last_request[url] = time.monotonic()
+                try:
+                    elements = await self._query(url, query)
+                except DiscoveryError as exc:
+                    errors.append(str(exc))
+                    log.warning("Overpass server failed - %s", exc)
+                    continue
+                HEALTH.record_ok(url)
+                return [p for p in (element_to_place(e, "osm") for e in elements) if p is not None]
+        HEALTH.record_error("; ".join(errors) or "no Overpass servers configured")
+        raise DiscoveryError("; ".join(errors) or "no Overpass servers configured")
+
+
+def _host(url: str) -> str:
+    return httpx.URL(url).host or url
+
+
+def _remark(text: str) -> str:
+    """Overpass error pages are HTML with the reason in a <p> or 'remark'; keep it short."""
+    m = re.search(r"<strong[^>]*>Error</strong>:?(.*?)</p>", text, re.S | re.I)
+    msg = m.group(1) if m else text
+    return re.sub(r"<[^>]+>|\s+", " ", msg).strip()[:160]
+
+
+@dataclass
+class LiveHealth:
+    """Last outcome of live OpenStreetMap searches (shown in /api/status and the dashboard)."""
+
+    last_ok_at: float | None = None
+    last_ok_server: str | None = None
+    last_error_at: float | None = None
+    last_error: str | None = None
+
+    def record_ok(self, url: str) -> None:
+        self.last_ok_at, self.last_ok_server = time.time(), _host(url)
+
+    def record_error(self, error: str) -> None:
+        self.last_error_at, self.last_error = time.time(), error[:500]
+
+    def as_dict(self) -> dict:
+        return {
+            "last_ok_at": self.last_ok_at, "last_ok_server": self.last_ok_server,
+            "last_error_at": self.last_error_at, "last_error": self.last_error,
+        }
+
+
+HEALTH = LiveHealth()
 
 
 def element_to_place(e: dict, source: str) -> RawPlace | None:

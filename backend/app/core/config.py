@@ -76,16 +76,23 @@ class Settings(BaseSettings):
     # --- Local discovery (OpenStreetMap) --------------------------------------
     # Live queries to the public Overpass API (free, no key; fair-use limits).
     discovery_live: bool = True
-    overpass_url: str = "https://overpass-api.de/api/interpreter"
+    # Comma-separated public Overpass servers, tried in order until one answers.
+    overpass_urls: str = (
+        "https://overpass-api.de/api/interpreter,"
+        "https://overpass.private.coffee/api/interpreter,"
+        "https://overpass.kumi.systems/api/interpreter"
+    )
+    overpass_url: str = ""  # legacy single-server setting; if set, it is tried first
     nominatim_url: str = "https://nominatim.openstreetmap.org"
     # OSM usage policies require an identifying User-Agent with contact details.
     osm_user_agent: str = "HideoutStudiosGuestAssistant/1.0 (self-hosted; set OSM_USER_AGENT with your contact)"
-    discovery_timeout_seconds: float = 20.0
+    discovery_timeout_seconds: float = 25.0
     discovery_cache_ttl_seconds: int = 3600
     # After a live failure, skip live calls for this long and use local datasets.
-    discovery_failure_cooldown_seconds: int = 300
+    discovery_failure_cooldown_seconds: int = 60
     # Fictional sample places (clearly labelled) when no real data is available.
-    discovery_sample_data: bool = True
+    # Off by default: with it off, a failed live search says so honestly instead.
+    discovery_sample_data: bool = False
     default_discovery_radius_m: int = 3000
     allowed_radii_km: str = "1,3,5,10"
     max_discovery_radius_m: int = 10000
@@ -151,6 +158,12 @@ class Settings(BaseSettings):
         origins = [self.frontend_url.rstrip("/")]
         origins += [o.strip().rstrip("/") for o in self.cors_extra_origins.split(",") if o.strip()]
         return origins
+
+    @property
+    def overpass_endpoints(self) -> list[str]:
+        urls = [self.overpass_url] if self.overpass_url else []
+        urls += [u.strip() for u in self.overpass_urls.split(",") if u.strip()]
+        return list(dict.fromkeys(urls))
 
     @property
     def radii_km(self) -> list[int]:

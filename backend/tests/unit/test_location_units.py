@@ -225,3 +225,29 @@ async def test_geocoder_sends_user_agent_and_parses():
     res = await geocode("Saket, New Delhi", httpx.AsyncClient(transport=httpx.MockTransport(handler)))
     assert res == [{"display_name": "Saket, Delhi", "latitude": 28.52, "longitude": 77.21}]
     assert seen["params"]["countrycodes"] == "in" and seen["params"]["format"] == "jsonv2"
+
+
+async def test_overpass_tries_next_server_and_reports_reasons(monkeypatch):
+    from app.core.config import get_settings
+    from app.location.providers import HEALTH
+
+    monkeypatch.setattr(get_settings(), "overpass_url", "")
+    monkeypatch.setattr(get_settings(), "overpass_urls", "https://a.example/api/interpreter,https://b.example/api/interpreter")
+    hosts = []
+
+    def handler(request):
+        hosts.append(request.url.host)
+        if request.url.host == "a.example":
+            return httpx.Response(504, text="<p><strong>Error</strong>: runtime error: Query timed out</p>")
+        return httpx.Response(200, json=OVERPASS_JSON)
+
+    provider = OverpassProvider(httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    res = await provider.search(SearchSpec(latitude=28.5245, longitude=77.2066, radius_m=1000, category=category_by_key("cafe")))
+    assert hosts == ["a.example", "b.example"] and [r.name for r in res] == ["Real Cafe", "Big Cafe"]
+    assert HEALTH.last_ok_server == "b.example"
+
+    provider = OverpassProvider(httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(429, text="Too many requests"))))
+    with pytest.raises(DiscoveryError) as exc:
+        await provider.search(SearchSpec(latitude=1, longitude=2, radius_m=500, category=category_by_key("cafe")))
+    assert "a.example: HTTP 429" in str(exc.value) and "b.example: HTTP 429" in str(exc.value)
+    assert "HTTP 429" in HEALTH.last_error

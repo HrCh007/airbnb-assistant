@@ -39,6 +39,9 @@ export function DashboardView() {
   if (it.llm.state === "unreachable") warnings.push("Ollama isn't reachable, so answers quote documents directly. Check the ollama container.");
   if (!it.vector_store.reachable) warnings.push("ChromaDB isn't reachable: property questions can't be answered. Check the chromadb container.");
   if (it.embeddings.provider === "local-hash") warnings.push("The sentence-transformers model couldn't be loaded; search uses the basic keyword fallback.");
+  const lh = it.discovery.live_health;
+  if (it.discovery.live_osm && lh?.last_error_at && (!lh.last_ok_at || lh.last_error_at > lh.last_ok_at))
+    warnings.push(`Live OpenStreetMap search failed at ${new Date(lh.last_error_at * 1000).toLocaleTimeString()}: ${lh.last_error}. Run "docker compose exec backend python -m scripts.check_discovery" to diagnose.`);
   if (!it.discovery.live_osm && !it.discovery.osm_snapshot) warnings.push(it.discovery.sample_data ? "Nearby places use the FICTIONAL sample dataset. Enable DISCOVERY_LIVE or build an OSM snapshot." : "No map data source is enabled for nearby places.");
 
   return (
@@ -94,6 +97,7 @@ export function DashboardView() {
               ["Vector store", `${it.vector_store.provider} · ${it.vector_store.reachable ? "ok" : "unreachable"}`],
               ["Database", it.database],
               ["Map data", [it.discovery.live_osm && "live OpenStreetMap", it.discovery.osm_snapshot && "OSM snapshot", it.discovery.sample_data && "sample (fictional)"].filter(Boolean).join(" → ") || "none"],
+              ["Last live search", lh?.last_ok_at ? `OK via ${lh.last_ok_server} at ${new Date(lh.last_ok_at * 1000).toLocaleTimeString()}` : lh?.last_error_at ? "failed (see warning)" : "not used yet"],
               ["Paid APIs", it.paid_apis],
             ].map(([k, v]) => (
               <div key={k} className="flex justify-between gap-4">

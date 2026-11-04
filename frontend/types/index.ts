@@ -94,7 +94,13 @@ export interface RuntimeStatus {
   embeddings: { provider: string; dimensions: number };
   vector_store: { provider: string; reachable: boolean };
   database: string;
-  discovery: { live_osm: boolean; osm_snapshot: boolean; sample_data: boolean };
+  discovery: {
+    live_osm: boolean;
+    osm_snapshot: boolean;
+    sample_data: boolean;
+    overpass_servers?: string[];
+    live_health?: { last_ok_at: number | null; last_ok_server: string | null; last_error_at: number | null; last_error: string | null };
+  };
   paid_apis: string;
 }
 

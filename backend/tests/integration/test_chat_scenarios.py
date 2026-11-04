@@ -116,7 +116,7 @@ async def test_live_osm_outage_falls_back_to_labelled_sample_data(new_chat, fake
     fake_osm.fail = True
     r = await (await new_chat("saket")).ask("Suggest some cafes nearby")
     assert r["places"] and all(p["source"] == "sample" and p["name"].startswith("[Sample]") for p in r["places"])
-    assert "unavailable" in r["text"] and "FICTIONAL" in r["text"]
+    assert "sample data" in r["text"] and "FICTIONAL" in r["text"]
 
 
 async def test_snapshot_is_preferred_over_sample(new_chat, fake_osm, tmp_path):
@@ -258,3 +258,12 @@ async def test_validation_and_rate_limit(new_chat, client, monkeypatch):
     monkeypatch.setattr(get_settings(), "rate_limit_chat_per_minute", 2)
     codes = [(await client.post("/api/chat/message", json={"session_id": chat.sid, "message": "hi"}, headers=chat.headers)).status_code for _ in range(3)]
     assert codes == [200, 200, 429]
+
+
+async def test_live_failure_without_sample_data_is_honest(new_chat, fake_osm, monkeypatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "discovery_sample_data", False)
+    fake_osm.fail = True
+    r = await (await new_chat("saket")).ask("Suggest some cafes nearby")
+    assert r["places"] == [] and "didn't respond" in r["text"] and "[Sample]" not in r["text"]
