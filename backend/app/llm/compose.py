@@ -264,17 +264,40 @@ def unknown_place_names(answer: str, places: list[PlaceResult]) -> list[str]:
     return bad
 
 
+def canned_conversation(message: str, property_name: str) -> str | None:
+    """Fixed replies for greetings, thanks, goodbyes and questions about the assistant.
+    None = other small talk (the LLM handles it when available)."""
+    from app.llm.heuristic_planner import _GREETING, ABOUT_BOT
+
+    if ABOUT_BOT.search(message):
+        return (
+            "I'm an AI assistant for Hideout Studios, not a human. Under the hood I'm a **RAG chatbot** "
+            "(retrieval-augmented generation): when you ask about your stay, I first look up "
+            f"**{property_name}'s own guide** and answer only from what it says, so I don't guess things like "
+            "Wi-Fi passwords or check-out times. For nearby places I search **OpenStreetMap** around your "
+            "property's exact location. I run on a private, open-source AI model hosted by Hideout Studios.\n\n"
+            "I can help with check-in, Wi-Fi, house rules, food, cafes, nightlife, shopping, sights and "
+            "essentials like pharmacies or ATMs. What would you like to know?"
+        )
+    if re.search(r"thank|shukriya|dhanyavaad|thx", message, re.I):
+        return "You're welcome! Enjoy your stay — I'm here whenever you need anything."
+    if re.search(r"\bbye\b|goodbye|good night", message, re.I):
+        return "Take care, and have a lovely time in Delhi!"
+    if _GREETING.match(message):
+        return (
+            f"Hi! I'm your local guide for {property_name}. Ask me about your stay (check-in, Wi-Fi, house rules) "
+            "or for nearby food, things to do, shopping, nightlife or essentials."
+        )
+    return None
+
+
 def offline_answer(
     *, message: str, plan: QueryPlan, property_name: str, retrieval: RetrievalResult | None,
     places: list[PlaceResult], places_previous: bool, notices: list[str],
 ) -> str:
     if plan.intent == "GENERAL_CONVERSATION":
-        if re.search(r"thank|shukriya|dhanyavaad|thx", message, re.I):
-            return "You're welcome! Enjoy your stay — I'm here whenever you need anything."
-        if re.search(r"\bbye\b|goodbye|good night", message, re.I):
-            return "Take care, and have a lovely time in Delhi!"
-        return (
-            f"Hi! I'm your local guide for {property_name}. Ask me about your stay (check-in, Wi-Fi, house rules) "
+        return canned_conversation(message, property_name) or (
+            f"I'm your local guide for {property_name}. Ask me about your stay (check-in, Wi-Fi, house rules) "
             "or for nearby food, things to do, shopping, nightlife or essentials."
         )
     if plan.clarification_question and not places:

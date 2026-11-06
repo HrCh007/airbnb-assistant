@@ -87,3 +87,18 @@ async def test_previous_results_passed_for_followups(new_chat, fake_llm, fake_os
     await chat.ask("Suggest restaurants")
     await chat.ask("Any of these good for families?")
     assert "previously_shown: yes" in fake_llm.turns[-1]["user_turn"]
+
+
+async def test_questions_about_the_bot_get_an_honest_answer(new_chat, fake_llm):
+    chat = await new_chat("saket")
+    for q in ["Are you a rag bot?", "Are you a human?", "What can you do?", "Aap kaun ho?"]:
+        r = await chat.ask(q)
+        assert "not a human" in r["text"] and "RAG chatbot" in r["text"], q
+    assert fake_llm.turns == []  # fixed, accurate answer: no model call needed
+
+
+async def test_other_small_talk_uses_the_llm(new_chat, fake_llm):
+    fake_llm.classify_result = {"intent": "GENERAL_CONVERSATION", "search_query": ""}
+    fake_llm.reply = "Delhi in winter is lovely - carry a light jacket for the evenings!"
+    r = await (await new_chat("saket")).ask("hmm I've never been to Delhi before, any general tips?")
+    assert r["intent"] == "GENERAL_CONVERSATION" and r["text"] == fake_llm.reply

@@ -32,6 +32,7 @@ from app.llm.compose import (
     NOT_FOUND,
     PIN_REQUIRED,
     build_user_turn,
+    canned_conversation,
     offline_answer,
     place_line,
     suggest_followups,
@@ -237,7 +238,7 @@ async def handle_message(db: AsyncSession, conv: Conversation, message: str) -> 
     property_only = plan.intent == "PROPERTY_QUERY"
     q = plan.property_question or message
     deterministic = (
-        plan.intent == "GENERAL_CONVERSATION"
+        (plan.intent == "GENERAL_CONVERSATION" and canned_conversation(message, prop.name) is not None)
         or (property_only and (retrieval is None or not retrieval.chunks or retrieval.withheld_sensitive
                                or not topic_covered(q, retrieval)))
         or (plan.places is not None and not places and plan.intent == "LOCAL_DISCOVERY_QUERY")

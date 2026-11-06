@@ -15,7 +15,14 @@ from app.location.categories import category_by_key, match_category
 _GREETING = re.compile(
     r"^\s*(hi+|hello|hey+|namaste|namaskar|good (morning|afternoon|evening|night)|thanks?|thank you|thx|ty|"
     r"ok(ay)?|cool|great|awesome|nice|bye|goodbye|shukriya|dhanyavaad|perfect|sounds good|got it)\b[\s!.,]*"
-    r"(so much|a lot|bhai|yaar|ji)?[\s!.]*$",
+    r"(there|everyone|all|again|so much|a lot|bhai|yaar|ji)?[\s!.]*$",
+    re.I,
+)
+# Questions about the assistant itself ("Are you a RAG bot?", "Aap kaun ho?").
+ABOUT_BOT = re.compile(
+    r"\b((are|r) (you|u)( an?)? (bot|robot|ai|a\.i\.?|human|real( person)?|person|rag( bot)?|chat ?bot|machine|llm)|"
+    r"who (are|r) (you|u)|what (are|r) (you|u)\b|what can (you|u) do|how do (you|u) work|"
+    r"what('?s| is) (rag|your name)|which (ai|model|llm)|(tum|aap) kaun ho|kya (tum|aap) (bot|robot|insaan|ai) ho)",
     re.I,
 )
 _EMERGENCY = re.compile(
@@ -159,7 +166,7 @@ def heuristic_plan(message: str, last_places_plan: dict | None = None, has_previ
         loc = next((n for n in _LOCATION_NAMES if n in switch.group(0)), None)
         return QueryPlan(intent="GENERAL_CONVERSATION", switch_location=loc, language=language, preference_updates=prefs)
 
-    if _GREETING.match(text):
+    if _GREETING.match(text) or ABOUT_BOT.search(lower):
         return QueryPlan(intent="GENERAL_CONVERSATION", language=language, preference_updates=prefs)
 
     radius_m = int(prefs.max_distance_km * 1000) if prefs.max_distance_km else None
